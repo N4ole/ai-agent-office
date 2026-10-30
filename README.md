@@ -1,8 +1,20 @@
 # AI Agent Office
 
+[![Télécharger Releases](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Releases-2da44e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/N4ole/ai-agent-office/releases) [![Docs Français](https://img.shields.io/badge/Docs-Fran%C3%A7ais-0969da?style=for-the-badge)](docs/fr/README.md) [![Docs English](https://img.shields.io/badge/Docs-English-8250df?style=for-the-badge)](docs/en/README.md) [![Licence MIT](https://img.shields.io/badge/Licence-MIT-57606a?style=for-the-badge)](LICENSE)
+
 Bureau virtuel en pixel art pour observer et piloter vos agents **Claude Code** en temps réel, sous Windows.
 Chaque personnage est une vraie session ou un vrai sous-agent Claude Code ; chaque statut vient d’un événement réel
 ou d’une déduction signalée comme telle.
+
+## Documentation
+
+| | Français | English |
+|---|---|---|
+| Sommaire / Contents | [docs/fr](docs/fr/README.md) | [docs/en](docs/en/README.md) |
+| Installation | [Installation](docs/fr/installation.md) | [Installation](docs/en/installation.md) |
+| Utilisation / Usage | [Utilisation](docs/fr/utilisation.md) | [Usage](docs/en/usage.md) |
+| Fonctionnement / How it works | [Fonctionnement](docs/fr/fonctionnement.md) | [How it works](docs/en/how-it-works.md) |
+| Développement / Development | [Développement](docs/fr/developpement.md) | [Development](docs/en/development.md) |
 
 ## Lancer l’application
 
