@@ -354,6 +354,17 @@ export class OfficeDB {
     this.run('INSERT OR REPLACE INTO offsets (file, offset) VALUES (?, ?)', [file, offset]);
   }
 
+  /** Forgets read offsets of files that no longer exist (R-16). Returns how many were removed. */
+  pruneOffsets(exists: (file: string) => boolean = existsSync): number {
+    const gone = [...this.offsets.keys()].filter((f) => !exists(f));
+    for (const f of gone) {
+      this.offsets.delete(f);
+      this.db.run('DELETE FROM offsets WHERE file = ?', [f]);
+    }
+    if (gone.length) this.markDirty();
+    return gone.length;
+  }
+
   // ---- maintenance ----
   /**
    * Deletes events/notifications older than `days`, and agents with no activity since then.

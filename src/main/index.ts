@@ -176,6 +176,11 @@ async function main() {
     .then(() => {
       manager.housekeeping();
       manager.log('info', 'Connecteur Claude Code démarré');
+      // Only when Claude Code's folder is reachable: an unplugged drive must not wipe every offset.
+      if (existsSync(path.join(settings.claudeHome, 'projects'))) {
+        const pruned = db.pruneOffsets();
+        if (pruned) manager.log('info', `${pruned} position(s) de lecture de fichiers disparus oubliée(s)`);
+      }
     })
     .catch((e) => manager.log('error', `Connecteur Claude Code : ${e?.message ?? e}`));
   if (settings.demoMode) await startDemo();

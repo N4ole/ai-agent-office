@@ -317,6 +317,7 @@ export class AgentManager implements ProviderSink {
       } else if (a.status !== 'working') this.stuckNotified.delete(a.id);
       if ((a.status === 'done' || a.status === 'lost') && a.desk >= 0 && now - (a.endedAt ?? a.lastEventAt) > DESK_RELEASE_MS) {
         a.desk = -1;
+        this.consoles.delete(a.id); // left the office: free its console buffer (R-16)
         this.touch(a);
       }
     }
