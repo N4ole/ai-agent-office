@@ -8,6 +8,7 @@ import { ClaudeProvider } from '../src/main/providers/claude/claudeProvider';
 import { createAgent } from '../src/main/core/reducer';
 import { installHooks, uninstallHooks, writeJsonAtomic } from '../src/main/core/hooks';
 import { devHelpers } from '../src/main/core/devHelpers';
+import { hookRecord } from '../src/main/core/hookLog';
 import { PROD_CSP, withDevCsp } from '../src/shared/csp';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../src/main/core/processCheck';
 
@@ -173,5 +174,25 @@ describe('production build hardening (R-17, R-25)', () => {
   it('leaves source maps out of the packaged app', () => {
     const pkg = JSON.parse(readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
     expect(pkg.build.files).toContain('!**/*.map');
+  });
+});
+
+describe('hook relay (hook-events.jsonl)', () => {
+  it('masks secrets before writing, not only truncates', () => {
+    const rec = hookRecord(
+      {
+        hook_event_name: 'Notification',
+        session_id: 's',
+        cwd: 'C:/p',
+        message: 'Claude needs your permission: export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwx',
+        other: 'dropped',
+      },
+      1000,
+    );
+    expect(rec.message).not.toContain('sk-ant-api03');
+    expect(rec.message).toContain('Claude needs your permission');
+    expect(rec).not.toHaveProperty('other');
+    expect(rec.ts).toBe(1000);
+    expect(hookRecord({ message: 'x'.repeat(2000) }, 1).message!.length).toBeLessThanOrEqual(500);
   });
 });
