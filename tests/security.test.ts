@@ -7,6 +7,8 @@ import path from 'node:path';
 import { ClaudeProvider } from '../src/main/providers/claude/claudeProvider';
 import { createAgent } from '../src/main/core/reducer';
 import { installHooks, uninstallHooks, writeJsonAtomic } from '../src/main/core/hooks';
+import { devHelpers } from '../src/main/core/devHelpers';
+import { PROD_CSP, withDevCsp } from '../src/shared/csp';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../src/main/core/processCheck';
 
 const dirs: string[] = [];
@@ -135,5 +137,41 @@ describe('~/.claude/settings.json changes (R-05)', () => {
     expect(path.dirname(seen[0])).toBe(home);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ a: 2 });
     expect(readdirSync(home)).toEqual(['settings.json']);
+  });
+});
+
+describe('production build hardening (R-17, R-25)', () => {
+  const env = {
+    AAO_USER_DATA: 'C:/tmp/x',
+    AAO_WINDOW: '1280x720',
+    AAO_SCREENSHOT: 'C:/tmp/s.png',
+    AAO_SCRIPT: 'alert(1)',
+    AAO_EXIT: '1',
+    VITE_DEV_SERVER_URL: 'http://localhost:5199',
+  };
+
+  it('ignores the AAO_* and dev-server variables in a packaged app', () => {
+    expect(devHelpers(env, true)).toEqual({});
+  });
+
+  it('keeps them for development', () => {
+    const d = devHelpers(env, false);
+    expect(d.userData).toBe('C:/tmp/x');
+    expect(d.window).toEqual({ width: 1280, height: 720 });
+    expect(d.screenshot).toMatchObject({ file: 'C:/tmp/s.png', scripts: ['alert(1)'], exit: true });
+    expect(d.devServerUrl).toBe('http://localhost:5199');
+    expect(devHelpers({ VITE_DEV_SERVER_URL: 'https://evil.example' }, false).devServerUrl).toBeUndefined();
+  });
+
+  it('ships a production CSP without the dev server, and a separate dev CSP', () => {
+    const html = readFileSync(path.join(__dirname, '../src/renderer/index.html'), 'utf8');
+    expect(html).toContain(PROD_CSP);
+    expect(html).not.toMatch(/localhost/);
+    expect(withDevCsp(html)).toContain('ws://localhost:5199');
+  });
+
+  it('leaves source maps out of the packaged app', () => {
+    const pkg = JSON.parse(readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+    expect(pkg.build.files).toContain('!**/*.map');
   });
 });

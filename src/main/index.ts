@@ -20,6 +20,7 @@ import { QuotaMonitor } from './providers/claude/quota';
 import { purgeHistory } from './core/purge';
 import { exportToFile } from './db/export';
 import { prepareOfficeHome } from './core/officeHome';
+import { devHelpers } from './core/devHelpers';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -55,8 +56,9 @@ function quotaAlerts(q: QuotaState) {
   }
 }
 
-// Dev/test helpers: isolated data folder and automatic screenshots (used to verify rendering).
-if (process.env.AAO_USER_DATA) app.setPath('userData', process.env.AAO_USER_DATA);
+// Dev/test helpers (isolated data folder, automatic screenshots...): ignored in packaged builds (R-17).
+const dev = devHelpers(process.env, app.isPackaged);
+if (dev.userData) app.setPath('userData', dev.userData);
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -241,8 +243,8 @@ function initialBounds(): Partial<WinState> {
 }
 
 function createWindow() {
-  const fixed = process.env.AAO_WINDOW?.match(/^(\d+)x(\d+)$/); // test helper: exact inner size
-  const b = fixed ? { width: Number(fixed[1]), height: Number(fixed[2]) } : initialBounds();
+  const fixed = dev.window; // test helper: exact inner size
+  const b = fixed ? { ...fixed } : initialBounds();
   win = new BrowserWindow({
     ...b,
     useContentSize: !!fixed,
@@ -269,21 +271,19 @@ function createWindow() {
   win.on('unmaximize', saveBounds);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e) => e.preventDefault());
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) void win.loadURL(devUrl);
+  if (dev.devServerUrl) void win.loadURL(dev.devServerUrl);
   else void win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  const shot = process.env.AAO_SCREENSHOT;
+  const shot = dev.screenshot;
   if (shot) {
-    const delays = (process.env.AAO_SCREENSHOT_AT ?? '6000').split(',').map(Number);
-    delays.forEach((d, i) =>
+    shot.delays.forEach((d, i) =>
       setTimeout(async () => {
-        const script = (process.env.AAO_SCRIPT ?? '').split('|||')[i];
+        const script = shot.scripts[i];
         if (script) await win?.webContents.executeJavaScript(script).catch(() => {});
         await new Promise((r) => setTimeout(r, 800));
         const img = await win!.webContents.capturePage();
-        await fsp.writeFile(shot.replace('.png', `-${i}.png`), img.toPNG());
-        if (i === delays.length - 1 && process.env.AAO_EXIT) {
+        await fsp.writeFile(shot.file.replace('.png', `-${i}.png`), img.toPNG());
+        if (i === shot.delays.length - 1 && shot.exit) {
           quitting = true;
           await shutdown();
           app.exit(0);

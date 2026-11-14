@@ -80,7 +80,7 @@ npm test
 
 ## Test environment variables
 
-Useful to check rendering without touching your data:
+Useful to check rendering without touching your data. They are only honoured **in development** (`npm run dev` / `npm start` from the sources): an installed or portable build ignores them.
 
 | Variable | Role |
 |---|---|
