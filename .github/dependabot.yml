@@ -1,0 +1,63 @@
+# Dependabot version updates. Security updates are enabled separately in the repository settings.
+#
+# Known, accepted alerts: 6 moderate `minimatch` advisories (GHSA-g3hv-75wg-m249) reach the project
+# only through electron-builder (build tool, not shipped in the app). `npm audit fix --force` would
+# downgrade electron-builder to 25.x (major change): do not apply it; wait for an upstream fix.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+    groups:
+      # Electron is the runtime shipped in the app: always reviewed on its own.
+      electron:
+        patterns:
+          - electron
+      dev-dependencies:
+        dependency-type: development
+        exclude-patterns:
+          - electron
+      production-dependencies:
+        dependency-type: production
+
+  - package-ecosystem: npm
+    directory: /tools/lint
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps(lint)
+    ignore:
+      # typescript-eslint supports TypeScript < 6.1 only; this copy exists for the ESLint parser.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+    groups:
+      lint-toolchain:
+        patterns:
+          - '*'
+
+  # Keeps the SHA-pinned actions of every workflow up to date.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns:
+          - '*'
