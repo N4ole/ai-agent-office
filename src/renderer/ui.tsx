@@ -56,7 +56,13 @@ export function StatusPill({ status, src, note }: { status: AgentStatus; src?: P
 }
 
 export function StatusDot({ status, size = 8 }: { status: AgentStatus; size?: number }) {
-  return <span className={`dot ${status === 'working' ? 'pulse' : ''}`} style={{ background: STATUS_COLORS[status], color: STATUS_COLORS[status], width: size, height: size }} title={STATUS_LABEL[status]} />;
+  return (
+    <span
+      className={`dot ${status === 'working' ? 'pulse' : ''}`}
+      style={{ background: STATUS_COLORS[status], color: STATUS_COLORS[status], width: size, height: size }}
+      title={STATUS_LABEL[status]}
+    />
+  );
 }
 
 /** Pixel avatar of an agent (same sprite as in the office). */
@@ -127,7 +133,9 @@ export function Modal({ title, children, onClose, wide }: { title: ReactNode; ch
       <div className={`modal ${wide ? 'wide' : ''}`} role="dialog">
         <div className="modal-head">
           <h3>{title}</h3>
-          <button className="btn ghost sm icon" onClick={onClose} aria-label="Fermer">✕</button>
+          <button className="btn ghost sm icon" onClick={onClose} aria-label="Fermer">
+            ✕
+          </button>
         </div>
         <div className="modal-body">{children}</div>
       </div>
@@ -171,10 +179,16 @@ export function ConfirmHost() {
   };
   return (
     <Modal title={req.title} onClose={() => done(false)}>
-      <p style={{ whiteSpace: 'pre-wrap', margin: 0 }} className="muted">{req.body}</p>
+      <p style={{ whiteSpace: 'pre-wrap', margin: 0 }} className="muted">
+        {req.body}
+      </p>
       <div className="modal-foot">
-        <button className="btn" onClick={() => done(false)}>Annuler</button>
-        <button className={`btn ${req.danger ? 'danger' : 'primary'}`} autoFocus onClick={() => done(true)}>{req.ok}</button>
+        <button className="btn" onClick={() => done(false)}>
+          Annuler
+        </button>
+        <button className={`btn ${req.danger ? 'danger' : 'primary'}`} autoFocus onClick={() => done(true)}>
+          {req.ok}
+        </button>
       </div>
     </Modal>
   );

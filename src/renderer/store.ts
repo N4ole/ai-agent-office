@@ -20,7 +20,20 @@ interface State {
   version: number;
 }
 
-let state: State = { ready: false, agents: new Map(), notifications: [], toasts: [], live: [], consoles: new Map(), settings: null, selected: null, view: 'office', appLog: [], quota: null, version: 0 };
+let state: State = {
+  ready: false,
+  agents: new Map(),
+  notifications: [],
+  toasts: [],
+  live: [],
+  consoles: new Map(),
+  settings: null,
+  selected: null,
+  view: 'office',
+  appLog: [],
+  quota: null,
+  version: 0,
+};
 const subs = new Set<() => void>();
 let scheduled = false;
 

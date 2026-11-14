@@ -39,7 +39,10 @@ async function waitFor(cond: () => boolean, ms = 8000) {
 }
 
 const writeRegistry = (pid: number, sid: string, status: string) =>
-  writeFileSync(path.join(sessions, `${pid}.json`), JSON.stringify({ pid, sessionId: sid, cwd: 'C:\\proj\\demo', status, name: 'demo-agent', kind: 'interactive', entrypoint: 'cli', startedAt: Date.now() }));
+  writeFileSync(
+    path.join(sessions, `${pid}.json`),
+    JSON.stringify({ pid, sessionId: sid, cwd: 'C:\\proj\\demo', status, name: 'demo-agent', kind: 'interactive', entrypoint: 'cli', startedAt: Date.now() }),
+  );
 
 beforeAll(async () => {
   mkdirSync(proj, { recursive: true });
@@ -49,7 +52,11 @@ beforeAll(async () => {
   db = new OfficeDB(null);
   await db.open();
   const settings = mergeSettings({ claudeHome: home });
-  manager = new AgentManager(db, { agentsChanged: () => {}, liveEvents: () => {}, notification: (n) => notifs.push(n), console: () => {}, log: () => {} }, () => settings);
+  manager = new AgentManager(
+    db,
+    { agentsChanged: () => {}, liveEvents: () => {}, notification: (n) => notifs.push(n), console: () => {}, log: () => {} },
+    () => settings,
+  );
   provider = new ClaudeProvider({ claudeHome: () => home, claudePath: () => 'claude', scanDays: () => 7, officeHome: path.join(home, 'office'), offsets: db });
   await provider.start(manager);
 });
@@ -84,8 +91,14 @@ describe('Claude Code connector (simulated ~/.claude)', () => {
     appendFileSync(transcript, lines(assistantTool('Agent', { description: 'Vérifier les tests', subagent_type: 'Explore', prompt: 'go' }, 'toolu_AG')));
     const subDir = path.join(proj, SID, 'subagents');
     mkdirSync(subDir, { recursive: true });
-    writeFileSync(path.join(subDir, 'agent-abc123.meta.json'), JSON.stringify({ agentType: 'Explore', description: 'Vérifier les tests', toolUseId: 'toolu_AG', finished: false }));
-    writeFileSync(path.join(subDir, 'agent-abc123.jsonl'), lines({ ...userPrompt('go'), isSidechain: true, agentId: 'abc123' }, assistantTool('Bash', { command: 'npm test' }, 'toolu_T')));
+    writeFileSync(
+      path.join(subDir, 'agent-abc123.meta.json'),
+      JSON.stringify({ agentType: 'Explore', description: 'Vérifier les tests', toolUseId: 'toolu_AG', finished: false }),
+    );
+    writeFileSync(
+      path.join(subDir, 'agent-abc123.jsonl'),
+      lines({ ...userPrompt('go'), isSidechain: true, agentId: 'abc123' }, assistantTool('Bash', { command: 'npm test' }, 'toolu_T')),
+    );
     const id = `cc:${SID}:abc123`;
     await waitFor(() => !!manager.agents.get(id));
     const sub = manager.agents.get(id)!;
@@ -95,7 +108,10 @@ describe('Claude Code connector (simulated ~/.claude)', () => {
     expect(sub.name).toBe('Vérifier les tests');
     await waitFor(() => manager.agents.get(id)!.activity === 'testing');
     expect(notifs.some((n) => n.type === 'subagent_new')).toBe(true);
-    writeFileSync(path.join(subDir, 'agent-abc123.meta.json'), JSON.stringify({ agentType: 'Explore', description: 'Vérifier les tests', toolUseId: 'toolu_AG', finished: true }));
+    writeFileSync(
+      path.join(subDir, 'agent-abc123.meta.json'),
+      JSON.stringify({ agentType: 'Explore', description: 'Vérifier les tests', toolUseId: 'toolu_AG', finished: true }),
+    );
     await waitFor(() => manager.agents.get(id)!.status === 'done');
   });
 

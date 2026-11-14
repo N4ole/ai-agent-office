@@ -31,7 +31,11 @@ export class AgentManager implements ProviderSink {
   private globalCostNotifiedAt = 0;
   private nid = 0;
 
-  constructor(private db: OfficeDB | null, private out: ManagerOutput, private settings: () => Settings) {}
+  constructor(
+    private db: OfficeDB | null,
+    private out: ManagerOutput,
+    private settings: () => Settings,
+  ) {}
 
   /** Restores agents persisted by a previous run. */
   restore(agents: InternalAgent[]): void {
@@ -295,7 +299,10 @@ export class AgentManager implements ProviderSink {
       const smp = samples.get(pid);
       if (!smp) continue;
       this.patchAgent(a.id, {
-        cpu: smp.cpu == null ? { value: null, source: 'unavailable', note: 'Premier échantillon en cours' } : { value: Math.round(smp.cpu * 10) / 10, source: 'observed', note: `Processus ${pid}` },
+        cpu:
+          smp.cpu == null
+            ? { value: null, source: 'unavailable', note: 'Premier échantillon en cours' }
+            : { value: Math.round(smp.cpu * 10) / 10, source: 'observed', note: `Processus ${pid}` },
         memoryMB: { value: Math.round(smp.memMB), source: 'observed', note: `Mémoire de travail du processus ${pid}` },
       });
       const high = (smp.cpu ?? 0) > s.cpuThresholdPct || smp.memMB > s.memThresholdMB;
@@ -317,9 +324,10 @@ export class AgentManager implements ProviderSink {
   }
 
   removeDemoAgents(): void {
-    for (const [id, a] of this.agents) if (a.demo) {
-      this.agents.delete(id);
-      this.changed.add(id);
-    }
+    for (const [id, a] of this.agents)
+      if (a.demo) {
+        this.agents.delete(id);
+        this.changed.add(id);
+      }
   }
 }

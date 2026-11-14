@@ -25,7 +25,10 @@ describe('/usage parsing', () => {
   it('reads the 5-hour and weekly windows from the real output', () => {
     const r = parseUsageText(REAL, NOW);
     expect(r.plan).toBe('subscription');
-    expect(r.windows.map((w) => [w.id, w.usedPct])).toEqual([['five_hour', 57], ['seven_day', 60]]);
+    expect(r.windows.map((w) => [w.id, w.usedPct])).toEqual([
+      ['five_hour', 57],
+      ['seven_day', 60],
+    ]);
     expect(new Date(r.windows[0].resetsAt!)).toEqual(new Date(2026, 9, 30, 15, 39));
     expect(new Date(r.windows[1].resetsAt!)).toEqual(new Date(2026, 10, 3, 21, 59));
   });
@@ -70,12 +73,22 @@ describe('quota probe isolation', () => {
     const quotaDir = path.join(home, 'office', 'quota');
     mkdirSync(path.join(home, 'sessions'), { recursive: true });
     mkdirSync(path.join(home, 'projects'), { recursive: true });
-    writeFileSync(path.join(home, 'sessions', `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: 'dddddddd-0000-0000-0000-000000000001', cwd: quotaDir, status: 'busy' }));
+    writeFileSync(
+      path.join(home, 'sessions', `${process.pid}.json`),
+      JSON.stringify({ pid: process.pid, sessionId: 'dddddddd-0000-0000-0000-000000000001', cwd: quotaDir, status: 'busy' }),
+    );
     const settings = mergeSettings({ claudeHome: home });
-    const manager = new AgentManager(null, { agentsChanged: () => {}, liveEvents: () => {}, notification: () => {}, console: () => {}, log: () => {} }, () => settings);
+    const manager = new AgentManager(
+      null,
+      { agentsChanged: () => {}, liveEvents: () => {}, notification: () => {}, console: () => {}, log: () => {} },
+      () => settings,
+    );
     const store = new Map<string, number>();
     const provider = new ClaudeProvider({
-      claudeHome: () => home, claudePath: () => 'claude', scanDays: () => 7, officeHome: path.join(home, 'office'),
+      claudeHome: () => home,
+      claudePath: () => 'claude',
+      scanDays: () => 7,
+      officeHome: path.join(home, 'office'),
       offsets: { getOffset: (f) => store.get(f), setOffset: (f, o) => void store.set(f, o) },
       ignoreCwds: () => [quotaDir],
     });

@@ -27,18 +27,7 @@ export type AgentStatus = 'working' | 'waiting' | 'idle' | 'done' | 'error' | 'l
 
 /** What the character should be doing visually. Derived from the last real event. */
 export type ActivityKind =
-  | 'thinking'
-  | 'coding'
-  | 'reading'
-  | 'searching'
-  | 'testing'
-  | 'command'
-  | 'delegating'
-  | 'browsing'
-  | 'waiting'
-  | 'idle'
-  | 'error'
-  | 'done';
+  'thinking' | 'coding' | 'reading' | 'searching' | 'testing' | 'command' | 'delegating' | 'browsing' | 'waiting' | 'idle' | 'error' | 'done';
 
 export type EventKind =
   | 'agent_detected'
@@ -188,17 +177,7 @@ export interface AgentState {
 }
 
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
-export type NotificationType =
-  | 'agent_new'
-  | 'subagent_new'
-  | 'task_start'
-  | 'task_end'
-  | 'error'
-  | 'blocked'
-  | 'session_lost'
-  | 'resources'
-  | 'cost'
-  | 'quota';
+export type NotificationType = 'agent_new' | 'subagent_new' | 'task_start' | 'task_end' | 'error' | 'blocked' | 'session_lost' | 'resources' | 'cost' | 'quota';
 
 export interface AppNotification {
   id: string;

@@ -1,9 +1,44 @@
-import type { AgentEvent, AgentState, AppNotification, ControlAction, ControlCapabilities, ControlResult, Health, LaunchOptions, QuotaState, SetupCheck, Settings, Tagged } from '../shared/types';
+import type {
+  AgentEvent,
+  AgentState,
+  AppNotification,
+  ControlAction,
+  ControlCapabilities,
+  ControlResult,
+  Health,
+  LaunchOptions,
+  QuotaState,
+  SetupCheck,
+  Settings,
+  Tagged,
+} from '../shared/types';
 
 export type UIAgent = AgentState & { progress?: Tagged<number>; todos?: { content: string; status: string }[] };
-export interface ConsoleLine { ts: number; stream: 'out' | 'err' | 'in' | 'sys'; text: string }
-export interface SessionRow { session_id: string; project: string; cwd: string; name: string; status: string; started_at: number; last_event_at: number; subagents: number }
-export interface EventQuery { agentId?: string; agentIds?: string[]; kinds?: string[]; text?: string; errorsOnly?: boolean; before?: number; since?: number; limit?: number }
+export interface ConsoleLine {
+  ts: number;
+  stream: 'out' | 'err' | 'in' | 'sys';
+  text: string;
+}
+export interface SessionRow {
+  session_id: string;
+  project: string;
+  cwd: string;
+  name: string;
+  status: string;
+  started_at: number;
+  last_event_at: number;
+  subagents: number;
+}
+export interface EventQuery {
+  agentId?: string;
+  agentIds?: string[];
+  kinds?: string[];
+  text?: string;
+  errorsOnly?: boolean;
+  before?: number;
+  since?: number;
+  limit?: number;
+}
 
 export interface OfficeApi {
   snapshot(): Promise<{ agents: UIAgent[]; notifications: AppNotification[]; settings: Settings }>;
@@ -37,7 +72,9 @@ export interface OfficeApi {
 }
 
 declare global {
-  interface Window { office: OfficeApi }
+  interface Window {
+    office: OfficeApi;
+  }
 }
 
 export const api: OfficeApi = window.office;

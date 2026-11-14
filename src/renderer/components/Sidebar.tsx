@@ -49,14 +49,33 @@ export function applyFilters(all: UIAgent[], f: Filters) {
   return baseFilter(all, f).filter((a) => !st || st.includes(a.status));
 }
 
-export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: { all: UIAgent[]; filters: Filters; setFilters: (f: Filters) => void; selected: string | null; width: number }) {
+export function Sidebar({
+  all,
+  filters: f,
+  setFilters: setF,
+  selected,
+  width,
+}: {
+  all: UIAgent[];
+  filters: Filters;
+  setFilters: (f: Filters) => void;
+  selected: string | null;
+  width: number;
+}) {
   const [showFilters, setShowFilters] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const now = useNow(5000);
   const base = useMemo(() => baseFilter(all, f, now), [all, f, now]);
   const list = useMemo(() => applyFilters(all, f), [all, f]);
   const projects = useMemo(() => [...new Set(all.map((a) => a.project))].sort(), [all]);
-  const sessions = useMemo(() => all.filter((a) => a.kind === 'session').sort((a, b) => b.lastEventAt - a.lastEventAt).slice(0, 80), [all]);
+  const sessions = useMemo(
+    () =>
+      all
+        .filter((a) => a.kind === 'session')
+        .sort((a, b) => b.lastEventAt - a.lastEventAt)
+        .slice(0, 80),
+    [all],
+  );
   const n = (tab: Filters['tab']) => base.filter((a) => !TAB_STATUSES[tab] || TAB_STATUSES[tab]!.includes(a.status)).length;
   const advanced = [f.project, f.session, f.kind, f.activity, f.priority].filter(Boolean).length + (f.history ? 1 : 0);
 
@@ -95,7 +114,14 @@ export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: 
           </button>
         </div>
         <div className="seg">
-          {([['all', 'Tous'], ['active', 'Actifs'], ['attention', 'À voir'], ['ended', 'Finis']] as const).map(([id, label]) => (
+          {(
+            [
+              ['all', 'Tous'],
+              ['active', 'Actifs'],
+              ['attention', 'À voir'],
+              ['ended', 'Finis'],
+            ] as const
+          ).map(([id, label]) => (
             <button key={id} className={f.tab === id ? 'on' : ''} onClick={() => setF({ ...f, tab: id })}>
               <b style={id === 'attention' && n('attention') ? { color: 'var(--warn)' } : undefined}>{n(id)}</b>
               {label}
@@ -106,7 +132,9 @@ export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: 
           <div className="filters">
             <select value={f.project} onChange={(e) => setF({ ...f, project: e.target.value })} title="Projet">
               <option value="">Tous les projets</option>
-              {projects.map((p) => <option key={p}>{p}</option>)}
+              {projects.map((p) => (
+                <option key={p}>{p}</option>
+              ))}
             </select>
             <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as Filters['kind'] })}>
               <option value="">Sessions et sous-agents</option>
@@ -115,11 +143,19 @@ export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: 
             </select>
             <select className="full" value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
               <option value="">Toutes les sessions</option>
-              {sessions.map((s) => <option key={s.id} value={s.sessionId}>{s.name}</option>)}
+              {sessions.map((s) => (
+                <option key={s.id} value={s.sessionId}>
+                  {s.name}
+                </option>
+              ))}
             </select>
             <select value={f.activity} onChange={(e) => setF({ ...f, activity: e.target.value as Filters['activity'] })}>
               <option value="">Toute activité</option>
-              {Object.entries(ACTIVITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(ACTIVITY_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
             </select>
             <select value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value as Filters['priority'] })} title="Déduite du statut">
               <option value="">Toute priorité</option>
@@ -128,9 +164,14 @@ export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: 
               <option value="basse">Priorité basse</option>
             </select>
             <label className="full row small muted" style={{ gap: 6 }}>
-              <input type="checkbox" checked={f.history} onChange={(e) => setF({ ...f, history: e.target.checked })} /> Inclure les sessions finies depuis plus de 24 h
+              <input type="checkbox" checked={f.history} onChange={(e) => setF({ ...f, history: e.target.checked })} /> Inclure les sessions finies depuis plus
+              de 24 h
             </label>
-            {advanced > 0 && <button className="btn sm ghost full" onClick={() => setF({ ...DEFAULT_FILTERS, text: f.text, tab: f.tab })}>Réinitialiser les filtres</button>}
+            {advanced > 0 && (
+              <button className="btn sm ghost full" onClick={() => setF({ ...DEFAULT_FILTERS, text: f.text, tab: f.tab })}>
+                Réinitialiser les filtres
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -139,37 +180,68 @@ export function Sidebar({ all, filters: f, setFilters: setF, selected, width }: 
           const isCol = collapsed.has(g.project);
           return (
             <div key={g.project} className="group">
-              <div className="group-title" onClick={() => { const s = new Set(collapsed); if (isCol) s.delete(g.project); else s.add(g.project); setCollapsed(s); }}>
+              <div
+                className="group-title"
+                onClick={() => {
+                  const s = new Set(collapsed);
+                  if (isCol) s.delete(g.project);
+                  else s.add(g.project);
+                  setCollapsed(s);
+                }}
+              >
                 <span>{isCol ? '▸' : '▾'}</span> {g.project} <span className="count">{g.rows.length}</span>
               </div>
-              {!isCol && g.rows.slice(0, 150).map(({ a, depth, kids }) => (
-                <div key={a.id} className={`acard ${selected === a.id ? 'sel' : ''}`} onClick={() => select(a.id)} onDoubleClick={() => officeCamera.focus(a.id)} title="Double-clic : centrer dans le bureau">
-                  {depth > 0 && Array.from({ length: depth }, (_, i) => <span key={i} className="tree-indent" />)}
-                  <div className="av">
-                    <Avatar a={a} />
-                    <StatusDot status={a.status} size={11} />
-                  </div>
-                  <div className="grow" style={{ minWidth: 0 }}>
-                    <div className="row" style={{ gap: 6 }}>
-                      <span className="nm ellipsis">{a.name}</span>
-                      {kids > 0 && <span className="sub" title={`${kids} sous-agent(s)`}>+{kids}</span>}
-                      {a.managed && <span className="sub" style={{ color: 'var(--acc)' }} title="Pilotée par l’app">●</span>}
-                      {a.demo && <span className="sub" style={{ color: '#ff922b' }}>DÉMO</span>}
+              {!isCol &&
+                g.rows.slice(0, 150).map(({ a, depth, kids }) => (
+                  <div
+                    key={a.id}
+                    className={`acard ${selected === a.id ? 'sel' : ''}`}
+                    onClick={() => select(a.id)}
+                    onDoubleClick={() => officeCamera.focus(a.id)}
+                    title="Double-clic : centrer dans le bureau"
+                  >
+                    {depth > 0 && Array.from({ length: depth }, (_, i) => <span key={i} className="tree-indent" />)}
+                    <div className="av">
+                      <Avatar a={a} />
+                      <StatusDot status={a.status} size={11} />
                     </div>
-                    <div className="meta ellipsis">
-                      {a.status === 'working' ? <span className="act">{ACTIVITY_LABEL[a.activity]}</span> : <span>{STATUS_LABEL[a.status]}</span>}
-                      <span className="faint ellipsis">· {a.status === 'working' && a.lastAction.value ? a.lastAction.value : a.role}</span>
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="row" style={{ gap: 6 }}>
+                        <span className="nm ellipsis">{a.name}</span>
+                        {kids > 0 && (
+                          <span className="sub" title={`${kids} sous-agent(s)`}>
+                            +{kids}
+                          </span>
+                        )}
+                        {a.managed && (
+                          <span className="sub" style={{ color: 'var(--acc)' }} title="Pilotée par l’app">
+                            ●
+                          </span>
+                        )}
+                        {a.demo && (
+                          <span className="sub" style={{ color: '#ff922b' }}>
+                            DÉMO
+                          </span>
+                        )}
+                      </div>
+                      <div className="meta ellipsis">
+                        {a.status === 'working' ? <span className="act">{ACTIVITY_LABEL[a.activity]}</span> : <span>{STATUS_LABEL[a.status]}</span>}
+                        <span className="faint ellipsis">· {a.status === 'working' && a.lastAction.value ? a.lastAction.value : a.role}</span>
+                      </div>
                     </div>
+                    <span className="ago">{ago(a.lastEventAt, now)}</span>
                   </div>
-                  <span className="ago">{ago(a.lastEventAt, now)}</span>
-                </div>
-              ))}
+                ))}
             </div>
           );
         })}
         {!groups.length && (
           <Empty title="Aucun agent">
-            {f.tab !== 'all' || advanced || f.text ? <a onClick={() => setF(DEFAULT_FILTERS)}>Effacer les filtres</a> : 'Lancez Claude Code : vos sessions apparaîtront ici.'}
+            {f.tab !== 'all' || advanced || f.text ? (
+              <a onClick={() => setF(DEFAULT_FILTERS)}>Effacer les filtres</a>
+            ) : (
+              'Lancez Claude Code : vos sessions apparaîtront ici.'
+            )}
           </Empty>
         )}
       </div>

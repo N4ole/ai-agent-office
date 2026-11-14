@@ -97,13 +97,7 @@ function toolData(name: string, input: Rec): Record<string, unknown> {
 
 function isNoisePrompt(text: string): boolean {
   const t = text.trimStart();
-  return (
-    t.length === 0 ||
-    t.startsWith('<system-reminder>') ||
-    t.startsWith('<local-command') ||
-    t.startsWith('<command-name>') ||
-    t.startsWith('Caveat:')
-  );
+  return t.length === 0 || t.startsWith('<system-reminder>') || t.startsWith('<local-command') || t.startsWith('<command-name>') || t.startsWith('Caveat:');
 }
 
 export function parseRecord(rec: Rec, ctx: ParseContext): AgentEvent[] {
@@ -143,7 +137,9 @@ export function parseRecord(rec: Rec, ctx: ParseContext): AgentEvent[] {
       }
       if (rec.isMeta) return out;
       // Strip wrapper tags (e.g. <pasted_content id="…">) so the summary shows the actual request.
-      const text = textOf(content).replace(/<\/?[a-z][\w-]*(?:\s[^>]*)?>/gi, '').trim();
+      const text = textOf(content)
+        .replace(/<\/?[a-z][\w-]*(?:\s[^>]*)?>/gi, '')
+        .trim();
       if (isNoisePrompt(textOf(content)) || !text) return out;
       out.push({
         id: `${base}:u`,

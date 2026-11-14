@@ -67,12 +67,13 @@ export function Dashboard({ agents }: { agents: UIAgent[] }) {
     .slice(0, 8);
   const maxCost = Math.max(0.0001, ...costRows.map((r) => r.c.total ?? 0));
   const byModel = new Map<string, { usd: number; out: number }>();
-  for (const a of agents) for (const [m, v] of Object.entries(a.costByModel ?? {})) {
-    const cur = byModel.get(m) ?? { usd: 0, out: 0 };
-    cur.usd += v.usd ?? 0;
-    cur.out += v.output;
-    byModel.set(m, cur);
-  }
+  for (const a of agents)
+    for (const [m, v] of Object.entries(a.costByModel ?? {})) {
+      const cur = byModel.get(m) ?? { usd: 0, out: 0 };
+      cur.usd += v.usd ?? 0;
+      cur.out += v.output;
+      byModel.set(m, cur);
+    }
   const models = [...byModel.entries()].sort((x, y) => y[1].usd - x[1].usd);
   const maxModel = Math.max(0.0001, ...models.map(([, v]) => v.usd));
   const roots = agents.filter((a) => !a.parentId || !agents.some((p) => p.id === a.parentId)).sort((a, b) => b.lastEventAt - a.lastEventAt);
@@ -92,17 +93,35 @@ export function Dashboard({ agents }: { agents: UIAgent[] }) {
         <Kpi ic="◉" v={k.running} l="Sessions en cours" sub={`${k.sessions} au total · ${k.subs} sous-agents`} />
         <Kpi ic="▦" v={k.projects} l="Projets actifs" />
         <Kpi ic="✎" v={fmtNum(k.tokOut)} l="Tokens générés" sub={`${fmtNum(k.tokIn)} en entrée (cache inclus)`} c="#b197fc" />
-        <Kpi ic="$" v={`≈ ${fmtUSD(k.est)}`} l="Coût estimé (tarif API)" sub={`Relevés Claude Code : ${fmtUSD(k.cost)} sur ${k.withCost}/${k.sessions} sessions`} c="#ffc935" />
-        <Kpi ic="⚙" v={k.measured ? `${k.cpu.toFixed(0)} %` : '—'} l="CPU Claude Code" sub={k.measured ? `${fmtNum(k.ram)} Mo de RAM` : k.alive ? 'mesure en cours…' : 'aucun processus actif'} />
+        <Kpi
+          ic="$"
+          v={`≈ ${fmtUSD(k.est)}`}
+          l="Coût estimé (tarif API)"
+          sub={`Relevés Claude Code : ${fmtUSD(k.cost)} sur ${k.withCost}/${k.sessions} sessions`}
+          c="#ffc935"
+        />
+        <Kpi
+          ic="⚙"
+          v={k.measured ? `${k.cpu.toFixed(0)} %` : '—'}
+          l="CPU Claude Code"
+          sub={k.measured ? `${fmtNum(k.ram)} Mo de RAM` : k.alive ? 'mesure en cours…' : 'aucun processus actif'}
+        />
       </div>
       <QuotaCard />
       <div className="grid2">
         <div className="card">
-          <div className="card-title">Tokens générés par jour (14 j) <Prov src="observed" note="Somme des champs usage des transcripts enregistrés" /></div>
+          <div className="card-title">
+            Tokens générés par jour (14 j) <Prov src="observed" note="Somme des champs usage des transcripts enregistrés" />
+          </div>
           {usage.length ? (
             <div className="bars1" style={{ marginBottom: 20 }}>
               {days14.map((u) => (
-                <div key={u.day} className="b" style={{ height: `${(u.output / maxU) * 100}%` }} title={`${u.day} : ${fmtNum(u.output)} sortie · ${fmtNum(u.input)} entrée`}>
+                <div
+                  key={u.day}
+                  className="b"
+                  style={{ height: `${(u.output / maxU) * 100}%` }}
+                  title={`${u.day} : ${fmtNum(u.output)} sortie · ${fmtNum(u.input)} entrée`}
+                >
                   <span>{u.day.slice(5)}</span>
                 </div>
               ))}
@@ -112,25 +131,57 @@ export function Dashboard({ agents }: { agents: UIAgent[] }) {
           )}
         </div>
         <div className="card">
-          <div className="card-title">Coût estimé par chat <Prov src="inferred" note="Tokens × tarif API public du modèle, sous-agents inclus" /></div>
-          {costRows.length ? costRows.map(({ a, c }) => (
-            <div key={a.id} className="hbar" onClick={() => select(a.id)} title={`${a.name}
-Agent : ${fmtUSD(c.own ?? 0)}${c.subCount ? `
-Sous-agents (${c.subCount}) : ${fmtUSD(c.subs)}` : ''}${a.cost.value != null ? `
-Relevé Claude Code : ${fmtUSD(a.cost.value)}` : ''}`}>
-              <span className="ellipsis">{a.name}{c.subCount ? <span className="faint"> +{c.subCount}</span> : null}</span>
-              <div className="track"><div className="fill" style={{ width: `${((c.total ?? 0) / maxCost) * 100}%` }} /></div>
-              <span className="mono small" style={{ textAlign: 'right' }}>{fmtUSD(c.total ?? 0)}</span>
-            </div>
-          )) : <Empty title="Aucune consommation">Le coût apparaît dès la première réponse d’un modèle.</Empty>}
+          <div className="card-title">
+            Coût estimé par chat <Prov src="inferred" note="Tokens × tarif API public du modèle, sous-agents inclus" />
+          </div>
+          {costRows.length ? (
+            costRows.map(({ a, c }) => (
+              <div
+                key={a.id}
+                className="hbar"
+                onClick={() => select(a.id)}
+                title={`${a.name}
+Agent : ${fmtUSD(c.own ?? 0)}${
+                  c.subCount
+                    ? `
+Sous-agents (${c.subCount}) : ${fmtUSD(c.subs)}`
+                    : ''
+                }${
+                  a.cost.value != null
+                    ? `
+Relevé Claude Code : ${fmtUSD(a.cost.value)}`
+                    : ''
+                }`}
+              >
+                <span className="ellipsis">
+                  {a.name}
+                  {c.subCount ? <span className="faint"> +{c.subCount}</span> : null}
+                </span>
+                <div className="track">
+                  <div className="fill" style={{ width: `${((c.total ?? 0) / maxCost) * 100}%` }} />
+                </div>
+                <span className="mono small" style={{ textAlign: 'right' }}>
+                  {fmtUSD(c.total ?? 0)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <Empty title="Aucune consommation">Le coût apparaît dès la première réponse d’un modèle.</Empty>
+          )}
           {models.length > 0 && (
             <>
-              <div className="card-title" style={{ marginTop: 14 }}>Par modèle</div>
+              <div className="card-title" style={{ marginTop: 14 }}>
+                Par modèle
+              </div>
               {models.map(([m, v]) => (
                 <div key={m} className="hbar" style={{ cursor: 'default' }} title={`${fmtNum(v.out)} tokens générés`}>
                   <span className="ellipsis">{modelLabel(m)}</span>
-                  <div className="track"><div className="fill" style={{ width: `${(v.usd / maxModel) * 100}%`, background: 'var(--blue)' }} /></div>
-                  <span className="mono small" style={{ textAlign: 'right' }}>{fmtUSD(v.usd)}</span>
+                  <div className="track">
+                    <div className="fill" style={{ width: `${(v.usd / maxModel) * 100}%`, background: 'var(--blue)' }} />
+                  </div>
+                  <span className="mono small" style={{ textAlign: 'right' }}>
+                    {fmtUSD(v.usd)}
+                  </span>
                 </div>
               ))}
             </>
@@ -141,7 +192,11 @@ Relevé Claude Code : ${fmtUSD(a.cost.value)}` : ''}`}>
         <div className="card">
           <div className="card-title">Organigramme</div>
           <div className="org" style={{ maxHeight: 340, overflow: 'auto' }}>
-            <ul>{roots.slice(0, 40).map((r) => <TreeNode key={r.id} a={r} all={agents} />)}</ul>
+            <ul>
+              {roots.slice(0, 40).map((r) => (
+                <TreeNode key={r.id} a={r} all={agents} />
+              ))}
+            </ul>
             {!roots.length && <Empty title="Aucun agent" />}
           </div>
         </div>
@@ -149,40 +204,84 @@ Relevé Claude Code : ${fmtUSD(a.cost.value)}` : ''}`}>
           <div className="card-title">En ce moment</div>
           {activity.length ? (
             <div className="row wrap" style={{ marginBottom: 12 }}>
-              {activity.map(([act, n]) => <span key={act} className="pill" style={{ '--c': '#74c0fc' } as CSSProperties}>{ACTIVITY_LABEL[act as keyof typeof ACTIVITY_LABEL]} · {n}</span>)}
+              {activity.map(([act, n]) => (
+                <span key={act} className="pill" style={{ '--c': '#74c0fc' } as CSSProperties}>
+                  {ACTIVITY_LABEL[act as keyof typeof ACTIVITY_LABEL]} · {n}
+                </span>
+              ))}
             </div>
-          ) : <div className="faint small" style={{ marginBottom: 12 }}>Aucun agent au travail.</div>}
+          ) : (
+            <div className="faint small" style={{ marginBottom: 12 }}>
+              Aucun agent au travail.
+            </div>
+          )}
           <div className="card-title">Dernières alertes</div>
           {alerts.length ? (
             <ul className="list">
               {alerts.map((n) => (
-                <li key={n.id} className="row" style={{ cursor: n.agentId ? 'pointer' : undefined, wordBreak: 'normal' }} onClick={() => n.agentId && select(n.agentId)}>
+                <li
+                  key={n.id}
+                  className="row"
+                  style={{ cursor: n.agentId ? 'pointer' : undefined, wordBreak: 'normal' }}
+                  onClick={() => n.agentId && select(n.agentId)}
+                >
                   <span className="dot" style={{ background: n.level === 'error' ? 'var(--err)' : n.level === 'warning' ? 'var(--warn)' : 'var(--ok)' }} />
-                  <span className="grow ellipsis"><b>{n.title}</b> <span className="faint">{n.body}</span></span>
+                  <span className="grow ellipsis">
+                    <b>{n.title}</b> <span className="faint">{n.body}</span>
+                  </span>
                   <span className="faint tiny mono">{ago(n.ts)}</span>
                 </li>
               ))}
             </ul>
-          ) : <div className="faint small">Aucune alerte.</div>}
+          ) : (
+            <div className="faint small">Aucune alerte.</div>
+          )}
         </div>
       </div>
       <div className="card" style={{ padding: 0, overflowX: 'auto', marginTop: 14 }}>
         <table>
           <thead>
-            <tr><th>Agent</th><th>Statut</th><th>Activité</th><th>Priorité <Prov src="inferred" note="Déduite du statut : Claude Code n’a pas de notion de priorité" /></th><th>Actions</th><th>Coût estimé</th><th>Dernier événement</th></tr>
+            <tr>
+              <th>Agent</th>
+              <th>Statut</th>
+              <th>Activité</th>
+              <th>
+                Priorité <Prov src="inferred" note="Déduite du statut : Claude Code n’a pas de notion de priorité" />
+              </th>
+              <th>Actions</th>
+              <th>Coût estimé</th>
+              <th>Dernier événement</th>
+            </tr>
           </thead>
           <tbody>
-            {agents.slice().sort((a, b) => b.lastEventAt - a.lastEventAt).slice(0, 60).map((a) => (
-              <tr key={a.id} className="click" onClick={() => select(a.id)}>
-                <td><span className="row"><Avatar a={a} style={{ width: 12, height: 18 }} /><span>{a.kind === 'subagent' ? '↳ ' : ''}{a.name}<div className="faint tiny">{a.project}</div></span></span></td>
-                <td><StatusPill status={a.status} /></td>
-                <td className="small">{a.status === 'working' ? ACTIVITY_LABEL[a.activity] : <span className="faint">—</span>}</td>
-                <td className="small">{priorityOf(a)}</td>
-                <td className="mono">{a.actionCount}</td>
-                <td className="mono small" title="Estimation au tarif API (cet agent seul)">{a.estimatedCost?.value != null ? `≈ ${fmtUSD(a.estimatedCost.value)}` : <span className="faint">—</span>}</td>
-                <td className="faint small">il y a {ago(a.lastEventAt)}</td>
-              </tr>
-            ))}
+            {agents
+              .slice()
+              .sort((a, b) => b.lastEventAt - a.lastEventAt)
+              .slice(0, 60)
+              .map((a) => (
+                <tr key={a.id} className="click" onClick={() => select(a.id)}>
+                  <td>
+                    <span className="row">
+                      <Avatar a={a} style={{ width: 12, height: 18 }} />
+                      <span>
+                        {a.kind === 'subagent' ? '↳ ' : ''}
+                        {a.name}
+                        <div className="faint tiny">{a.project}</div>
+                      </span>
+                    </span>
+                  </td>
+                  <td>
+                    <StatusPill status={a.status} />
+                  </td>
+                  <td className="small">{a.status === 'working' ? ACTIVITY_LABEL[a.activity] : <span className="faint">—</span>}</td>
+                  <td className="small">{priorityOf(a)}</td>
+                  <td className="mono">{a.actionCount}</td>
+                  <td className="mono small" title="Estimation au tarif API (cet agent seul)">
+                    {a.estimatedCost?.value != null ? `≈ ${fmtUSD(a.estimatedCost.value)}` : <span className="faint">—</span>}
+                  </td>
+                  <td className="faint small">il y a {ago(a.lastEventAt)}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -200,12 +299,25 @@ function QuotaCard() {
   if (q?.plan === 'api' && !q.windows.length) return null;
   return (
     <div className="card" style={{ marginTop: 14 }}>
-      <div className="card-title">Quotas d’utilisation restants <Prov src="observed" note="Valeurs fournies par Claude Code (/usage ou rate_limit_event)" /></div>
+      <div className="card-title">
+        Quotas d’utilisation restants <Prov src="observed" note="Valeurs fournies par Claude Code (/usage ou rate_limit_event)" />
+      </div>
       <div className="quota-grid">
-        {q?.windows.map((w) => <QuotaBar key={w.id} w={w} now={now} />)}
+        {q?.windows.map((w) => (
+          <QuotaBar key={w.id} w={w} now={now} />
+        ))}
       </div>
       <div style={{ marginTop: 10 }}>
-        <QuotaDetails q={q ? { ...q, windows: [] } : null} now={now} busy={busy} onRefresh={async () => { setBusy(true); await api.refreshQuota(); setBusy(false); }} />
+        <QuotaDetails
+          q={q ? { ...q, windows: [] } : null}
+          now={now}
+          busy={busy}
+          onRefresh={async () => {
+            setBusy(true);
+            await api.refreshQuota();
+            setBusy(false);
+          }}
+        />
       </div>
     </div>
   );
@@ -214,7 +326,10 @@ function QuotaCard() {
 function Kpi({ ic, v, l, c, sub }: { ic: string; v: ReactNode; l: string; c?: string; sub?: string }) {
   return (
     <div className="kpi" style={{ '--c': c } as CSSProperties}>
-      <div className="kh"><span>{l}</span><span className="ic">{ic}</span></div>
+      <div className="kh">
+        <span>{l}</span>
+        <span className="ic">{ic}</span>
+      </div>
       <div className="v">{v}</div>
       {sub && <div className="sub">{sub}</div>}
     </div>
@@ -228,7 +343,13 @@ function TreeNode({ a, all }: { a: UIAgent; all: UIAgent[] }) {
       <span className="node" onClick={() => select(a.id)}>
         <Avatar a={a} style={{ width: 10, height: 15 }} /> {a.name} <span className="faint tiny">{a.role}</span> <StatusPill status={a.status} />
       </span>
-      {kids.length > 0 && <ul>{kids.map((c) => <TreeNode key={c.id} a={c} all={all} />)}</ul>}
+      {kids.length > 0 && (
+        <ul>
+          {kids.map((c) => (
+            <TreeNode key={c.id} a={c} all={all} />
+          ))}
+        </ul>
+      )}
     </li>
   );
 }

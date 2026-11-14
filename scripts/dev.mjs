@@ -6,4 +6,7 @@ const server = await createServer({ configFile: 'vite.config.mts' });
 await server.listen();
 const electron = (await import('electron')).default;
 const child = spawn(electron, ['.'], { stdio: 'inherit', env: { ...process.env, VITE_DEV_SERVER_URL: 'http://localhost:5199' } });
-child.on('exit', async (code) => { await server.close(); process.exit(code ?? 0); });
+child.on('exit', async (code) => {
+  await server.close();
+  process.exit(code ?? 0);
+});

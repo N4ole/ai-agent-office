@@ -13,7 +13,8 @@ const BUILTIN: RegExp[] = [
 ];
 
 // key=value style secrets: keep the key, mask the value.
-const KV = /\b((?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth|authorization|access[_-]?key|client[_-]?secret)["']?\s*[:=]\s*["']?)([^\s"'&,;]{4,})/gi;
+const KV =
+  /\b((?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth|authorization|access[_-]?key|client[_-]?secret)["']?\s*[:=]\s*["']?)([^\s"'&,;]{4,})/gi;
 const BEARER = /\b(Bearer\s+)[A-Za-z0-9._\-~+/]{8,}=*/g;
 
 const MASK = '••••••';

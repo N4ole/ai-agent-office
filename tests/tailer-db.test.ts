@@ -57,7 +57,15 @@ describe('JsonlTailer', () => {
   });
 });
 
-const ev = (id: string, extra: Partial<AgentEvent> = {}): AgentEvent => ({ id, agentId: 'cc:a', ts: Date.now(), kind: 'tool_use', summary: `s ${id}`, source: 'transcript', ...extra });
+const ev = (id: string, extra: Partial<AgentEvent> = {}): AgentEvent => ({
+  id,
+  agentId: 'cc:a',
+  ts: Date.now(),
+  kind: 'tool_use',
+  summary: `s ${id}`,
+  source: 'transcript',
+  ...extra,
+});
 
 describe('OfficeDB', () => {
   it('deduplicates events by id', async () => {
@@ -82,7 +90,10 @@ describe('OfficeDB', () => {
     const file = path.join(tmp(), 'office.db');
     const db = new OfficeDB(file);
     await db.open();
-    const a = createAgent({ id: 'cc:a', provider: 'claude-code', kind: 'session', sessionId: 's', name: 'N', role: 'r', project: 'p', cwd: 'c', startedAt: 1 }, 3);
+    const a = createAgent(
+      { id: 'cc:a', provider: 'claude-code', kind: 'session', sessionId: 's', name: 'N', role: 'r', project: 'p', cwd: 'c', startedAt: 1 },
+      3,
+    );
     db.saveAgent(a);
     db.setOffset('f.jsonl', 1234);
     db.setSetting('settings', { scanDays: 3 });
@@ -100,7 +111,10 @@ describe('OfficeDB', () => {
   it('never persists demo agents', async () => {
     const db = new OfficeDB(null);
     await db.open();
-    const a = createAgent({ id: 'demo:1', provider: 'demo', kind: 'session', sessionId: 'd', name: 'D', role: 'r', project: 'p', cwd: '', startedAt: 1, demo: true }, 0);
+    const a = createAgent(
+      { id: 'demo:1', provider: 'demo', kind: 'session', sessionId: 'd', name: 'D', role: 'r', project: 'p', cwd: '', startedAt: 1, demo: true },
+      0,
+    );
     db.saveAgent(a);
     expect(db.loadAgents()).toHaveLength(0);
   });

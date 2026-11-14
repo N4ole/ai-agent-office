@@ -80,7 +80,13 @@ export class DemoProvider implements AgentProvider {
   capabilities(_a: AgentState): ControlCapabilities {
     const why = 'Agent fictif (mode démo) : aucune commande réelle.';
     return {
-      sendInstruction: false, interrupt: false, pause: false, stop: false, resume: false, openTerminal: false, openFolder: false,
+      sendInstruction: false,
+      interrupt: false,
+      pause: false,
+      stop: false,
+      resume: false,
+      openTerminal: false,
+      openFolder: false,
       reasons: { sendInstruction: why, interrupt: why, pause: why, stop: why, resume: why, openTerminal: why, openFolder: why },
     };
   }

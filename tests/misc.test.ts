@@ -44,7 +44,18 @@ describe('hooks installer', () => {
 describe('managed sessions (headless protocol)', () => {
   it('builds documented CLI arguments', () => {
     expect(buildArgs({ cwd: '.', model: 'sonnet', permissionMode: 'acceptEdits', resumeSessionId: 'abc' })).toEqual([
-      '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'sonnet', '--permission-mode', 'acceptEdits', '--resume', 'abc',
+      '-p',
+      '--input-format',
+      'stream-json',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--model',
+      'sonnet',
+      '--permission-mode',
+      'acceptEdits',
+      '--resume',
+      'abc',
     ]);
     expect(buildArgs({ cwd: '.', permissionMode: 'default' })).not.toContain('--permission-mode');
   });
@@ -52,7 +63,9 @@ describe('managed sessions (headless protocol)', () => {
     expect(JSON.parse(userMessage('salut'))).toEqual({ type: 'user', message: { role: 'user', content: 'salut' } });
   });
   it('renders stream messages for the console', () => {
-    expect(renderStreamMessage({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'a.ts' } }] } })).toEqual(['⚙ Lit a.ts']);
+    expect(renderStreamMessage({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'a.ts' } }] } })).toEqual([
+      '⚙ Lit a.ts',
+    ]);
     expect(renderStreamMessage({ type: 'result', subtype: 'success', duration_ms: 3000, total_cost_usd: 0.01 })[0]).toContain('success');
   });
 });

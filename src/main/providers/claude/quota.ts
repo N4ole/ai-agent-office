@@ -73,7 +73,13 @@ export function windowsFromRateLimit(info: any): QuotaWindow[] {
   for (const [key, v] of Object.entries<any>(w)) {
     if (typeof v?.utilization !== 'number') continue;
     const label = key === 'five_hour' ? 'Session (5 h)' : key === 'seven_day' ? 'Semaine (tous modèles)' : key.replace(/_/g, ' ');
-    out.push({ id: key, label, usedPct: Math.round(v.utilization * 1000) / 10, resetsAt: typeof v.resetsAt === 'number' ? v.resetsAt * 1000 : null, status: v.status });
+    out.push({
+      id: key,
+      label,
+      usedPct: Math.round(v.utilization * 1000) / 10,
+      resetsAt: typeof v.resetsAt === 'number' ? v.resetsAt * 1000 : null,
+      status: v.status,
+    });
   }
   return out;
 }
@@ -167,7 +173,12 @@ export class QuotaMonitor {
         }
         if (!text) return done({ plan: 'unknown', windows: [], fetchedAt: Date.now(), source: 'usage-command', error: 'Réponse de /usage vide' });
         const parsed = parseUsageText(text);
-        done({ ...parsed, fetchedAt: Date.now(), source: 'usage-command', error: parsed.plan === 'unknown' && !parsed.windows.length ? 'Format de /usage non reconnu' : undefined });
+        done({
+          ...parsed,
+          fetchedAt: Date.now(),
+          source: 'usage-command',
+          error: parsed.plan === 'unknown' && !parsed.windows.length ? 'Format de /usage non reconnu' : undefined,
+        });
       });
       child.stdin.end(JSON.stringify({ type: 'user', message: { role: 'user', content: '/usage' } }) + '\n');
     });

@@ -16,7 +16,12 @@ export interface ModelPrice {
 }
 
 const std = (label: string, input: number, output: number, cacheRead = input * 0.1): ModelPrice => ({
-  label, input, output, cacheWrite5m: input * 1.25, cacheWrite1h: input * 2, cacheRead,
+  label,
+  input,
+  output,
+  cacheWrite5m: input * 1.25,
+  cacheWrite1h: input * 2,
+  cacheRead,
 });
 
 export const PRICES_AS_OF = '30/10/2026';
@@ -49,11 +54,18 @@ export const PRICES: Record<string, ModelPrice> = {
 export function normalizeModel(model: string | undefined | null): string | null {
   if (!model) return null;
   let m = model.toLowerCase().trim();
-  m = m.replace(/^(us\.|eu\.|global\.)?anthropic\./, '').replace(/\[.*?\]$/, '').replace(/@.*$/, '').replace(/-\d{8}$/, '').replace(/-v\d+(:\d+)?$/, '');
+  m = m
+    .replace(/^(us\.|eu\.|global\.)?anthropic\./, '')
+    .replace(/\[.*?\]$/, '')
+    .replace(/@.*$/, '')
+    .replace(/-\d{8}$/, '')
+    .replace(/-v\d+(:\d+)?$/, '');
   if (PRICES[m]) return m;
   // Short aliases used by Claude Code (--model opus / sonnet / haiku) never reach transcripts,
   // but tolerate a prefix match on a known id (e.g. "claude-opus-5-5-fast").
-  const hit = Object.keys(PRICES).sort((a, b) => b.length - a.length).find((k) => m.startsWith(k));
+  const hit = Object.keys(PRICES)
+    .sort((a, b) => b.length - a.length)
+    .find((k) => m.startsWith(k));
   return hit ?? null;
 }
 
@@ -89,5 +101,5 @@ export function priceUsage(model: string | undefined | null, u: UsageTokens): nu
 
 export function modelLabel(model: string | null | undefined): string {
   const k = normalizeModel(model);
-  return k ? PRICES[k].label : model ?? '?';
+  return k ? PRICES[k].label : (model ?? '?');
 }

@@ -174,7 +174,18 @@ export class OfficeDB {
           fresh.push(e);
           continue;
         }
-        st.run([e.id, e.agentId, e.ts, e.kind, e.summary, e.detail ?? null, e.tool ?? null, e.isError ? 1 : 0, e.source, e.data ? JSON.stringify(e.data) : null]);
+        st.run([
+          e.id,
+          e.agentId,
+          e.ts,
+          e.kind,
+          e.summary,
+          e.detail ?? null,
+          e.tool ?? null,
+          e.isError ? 1 : 0,
+          e.source,
+          e.data ? JSON.stringify(e.data) : null,
+        ]);
         if (this.db.getRowsModified() > 0) fresh.push(e);
       }
       this.db.exec('COMMIT');
@@ -257,12 +268,26 @@ export class OfficeDB {
   // ---- notifications ----
   saveNotification(n: AppNotification): void {
     this.run('INSERT OR REPLACE INTO notifications (id, ts, type, level, title, body, agent_id, read) VALUES (?,?,?,?,?,?,?,?)', [
-      n.id, n.ts, n.type, n.level, n.title, n.body, n.agentId ?? null, n.read ? 1 : 0,
+      n.id,
+      n.ts,
+      n.type,
+      n.level,
+      n.title,
+      n.body,
+      n.agentId ?? null,
+      n.read ? 1 : 0,
     ]);
   }
   loadNotifications(limit = 300): AppNotification[] {
     return this.all<any>('SELECT * FROM notifications ORDER BY ts DESC LIMIT ?', [limit]).map((r) => ({
-      id: r.id, ts: r.ts, type: r.type, level: r.level, title: r.title, body: r.body, agentId: r.agent_id ?? undefined, read: !!r.read,
+      id: r.id,
+      ts: r.ts,
+      type: r.type,
+      level: r.level,
+      title: r.title,
+      body: r.body,
+      agentId: r.agent_id ?? undefined,
+      read: !!r.read,
     }));
   }
   markAllRead(): void {
@@ -312,7 +337,16 @@ export class OfficeDB {
     this.markDirty();
   }
 
-  sessions(): { session_id: string; project: string; cwd: string; name: string; status: string; started_at: number; last_event_at: number; subagents: number }[] {
+  sessions(): {
+    session_id: string;
+    project: string;
+    cwd: string;
+    name: string;
+    status: string;
+    started_at: number;
+    last_event_at: number;
+    subagents: number;
+  }[] {
     return this.all<any>(
       `SELECT s.session_id, s.project, s.cwd, s.name, s.status, s.started_at, s.last_event_at,
         (SELECT COUNT(*) FROM agents c WHERE c.session_id = s.session_id AND c.kind = 'subagent') AS subagents
@@ -340,7 +374,15 @@ function rowToEvent(r: any): AgentEvent {
     }
   }
   return {
-    id: r.id, agentId: r.agent_id, ts: r.ts, kind: r.kind, summary: r.summary ?? '', detail: r.detail ?? undefined,
-    tool: r.tool ?? undefined, isError: !!r.is_error, source: r.source, data,
+    id: r.id,
+    agentId: r.agent_id,
+    ts: r.ts,
+    kind: r.kind,
+    summary: r.summary ?? '',
+    detail: r.detail ?? undefined,
+    tool: r.tool ?? undefined,
+    isError: !!r.is_error,
+    source: r.source,
+    data,
   };
 }

@@ -34,10 +34,13 @@ describe('pricing', () => {
   it('accumulates an estimated cost per model on the agent, labelled as inferred', () => {
     const a = createAgent({ id: 'a', provider: 'claude-code', kind: 'subagent', sessionId: 's', name: 'n', role: 'r', project: 'p', cwd: '', startedAt: 0 }, 0);
     const msg = (id: string, model: string, out: number) => ({
-      type: 'assistant', uuid: id, timestamp: new Date().toISOString(),
+      type: 'assistant',
+      uuid: id,
+      timestamp: new Date().toISOString(),
       message: { id, model, content: [], usage: { input_tokens: 0, output_tokens: out, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } },
     });
-    for (const r of [msg('m1', 'claude-opus-5-5', 1_000_000), msg('m2', 'claude-haiku-5-5', 1_000_000)]) for (const e of parseRecord(r, { agentId: 'a' })) reduce(a, e, false);
+    for (const r of [msg('m1', 'claude-opus-5-5', 1_000_000), msg('m2', 'claude-haiku-5-5', 1_000_000)])
+      for (const e of parseRecord(r, { agentId: 'a' })) reduce(a, e, false);
     expect(a.estimatedCost).toMatchObject({ value: 20.5, source: 'inferred' });
     expect(Object.keys(a.costByModel!)).toEqual(['claude-opus-5-5', 'claude-haiku-5-5']);
     // A subagent's own cost was "unavailable" before; the estimate now fills that gap.
@@ -46,7 +49,12 @@ describe('pricing', () => {
 
   it('flags models with an unknown price instead of inventing one', () => {
     const a = createAgent({ id: 'b', provider: 'claude-code', kind: 'session', sessionId: 's', name: 'n', role: 'r', project: 'p', cwd: '', startedAt: 0 }, 0);
-    const r = { type: 'assistant', uuid: 'u', timestamp: new Date().toISOString(), message: { id: 'x', model: 'claude-future-9', content: [], usage: { input_tokens: 10, output_tokens: 10 } } };
+    const r = {
+      type: 'assistant',
+      uuid: 'u',
+      timestamp: new Date().toISOString(),
+      message: { id: 'x', model: 'claude-future-9', content: [], usage: { input_tokens: 10, output_tokens: 10 } },
+    };
     for (const e of parseRecord(r, { agentId: 'b' })) reduce(a, e, false);
     expect(a.estimatedCost?.source).toBe('unavailable');
   });

@@ -24,7 +24,9 @@ export function HistoryView() {
     <div className="page">
       <div className="page-head">
         <h2>Historique des sessions</h2>
-        <span className="faint">{list.length} session{list.length > 1 ? 's' : ''}</span>
+        <span className="faint">
+          {list.length} session{list.length > 1 ? 's' : ''}
+        </span>
         <div className="search grow" style={{ maxWidth: 420, marginLeft: 'auto' }}>
           <input placeholder="Nom, projet, dossier, tâche, identifiant…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -32,7 +34,15 @@ export function HistoryView() {
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table>
           <thead>
-            <tr><th>Session</th><th>Projet</th><th>Statut</th><th>Début</th><th>Durée</th><th>Sous-agents</th><th title="Tokens × tarif API public, sous-agents inclus">Coût estimé</th></tr>
+            <tr>
+              <th>Session</th>
+              <th>Projet</th>
+              <th>Statut</th>
+              <th>Début</th>
+              <th>Durée</th>
+              <th>Sous-agents</th>
+              <th title="Tokens × tarif API public, sous-agents inclus">Coût estimé</th>
+            </tr>
           </thead>
           <tbody>
             {list.map((r) => {
@@ -44,17 +54,30 @@ export function HistoryView() {
                       {a && <Avatar a={a} style={{ width: 14, height: 21 }} />}
                       <div style={{ minWidth: 0 }}>
                         <b>{a?.name ?? r.name}</b>
-                        {a?.currentTask.value && <div className="muted small ellipsis" style={{ maxWidth: 420 }}>{a.currentTask.value}</div>}
+                        {a?.currentTask.value && (
+                          <div className="muted small ellipsis" style={{ maxWidth: 420 }}>
+                            {a.currentTask.value}
+                          </div>
+                        )}
                         <div className="faint mono tiny">{r.session_id}</div>
                       </div>
                     </div>
                   </td>
-                  <td>{r.project}<div className="faint tiny ellipsis" style={{ maxWidth: 220 }}>{r.cwd}</div></td>
-                  <td><StatusPill status={(a?.status ?? r.status) as AgentStatus} /></td>
+                  <td>
+                    {r.project}
+                    <div className="faint tiny ellipsis" style={{ maxWidth: 220 }}>
+                      {r.cwd}
+                    </div>
+                  </td>
+                  <td>
+                    <StatusPill status={(a?.status ?? r.status) as AgentStatus} />
+                  </td>
                   <td className="small">{fmtDateTime(r.started_at)}</td>
                   <td className="small mono">{fmtDur(r.last_event_at - r.started_at)}</td>
                   <td className="mono">{r.subagents || <span className="faint">0</span>}</td>
-                  <td className="mono small">{a && chatCost(a, agents.values()).total != null ? `≈ ${fmtUSD(chatCost(a, agents.values()).total!)}` : <span className="faint">—</span>}</td>
+                  <td className="mono small">
+                    {a && chatCost(a, agents.values()).total != null ? `≈ ${fmtUSD(chatCost(a, agents.values()).total!)}` : <span className="faint">—</span>}
+                  </td>
                 </tr>
               );
             })}

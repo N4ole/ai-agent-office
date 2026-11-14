@@ -29,12 +29,17 @@ const FILTERS: { id: string; label: string; kinds?: EventKind[]; errors?: boolea
   { id: 'prompts', label: 'Demandes & messages', kinds: ['user_prompt', 'assistant_text'] },
   { id: 'tools', label: 'Outils', kinds: ['tool_use', 'tool_result', 'subagent_spawn'] },
   { id: 'errors', label: 'Erreurs', errors: true },
-  { id: 'status', label: 'Cycle de vie', kinds: ['status_change', 'agent_detected', 'session_start', 'session_end', 'process_lost', 'turn_end', 'subagent_done', 'notification'] },
+  {
+    id: 'status',
+    label: 'Cycle de vie',
+    kinds: ['status_change', 'agent_detected', 'session_start', 'session_end', 'process_lost', 'turn_end', 'subagent_done', 'notification'],
+  },
 ];
 
 /** Light syntax highlighting: commands, paths, errors, success words. */
 export function highlight(text: string): ReactNode[] {
-  const re = /(^\$ .*$)|([A-Za-z]:\\[^\s"'<>|]+|(?:\.{0,2}\/)?(?:[\w.-]+\/)+[\w.-]+\.\w+)|(\b(?:error|erreur|failed|fail|exception|traceback|denied)\b)|(\b(?:passed|success|ok|réussi)\b)/gim;
+  const re =
+    /(^\$ .*$)|([A-Za-z]:\\[^\s"'<>|]+|(?:\.{0,2}\/)?(?:[\w.-]+\/)+[\w.-]+\.\w+)|(\b(?:error|erreur|failed|fail|exception|traceback|denied)\b)|(\b(?:passed|success|ok|réussi)\b)/gim;
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
@@ -42,7 +47,11 @@ export function highlight(text: string): ReactNode[] {
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const cls = m[1] ? 'hl-cmd' : m[2] ? 'hl-path' : m[3] ? 'hl-err' : 'hl-ok';
-    out.push(<span key={i++} className={cls}>{m[0]}</span>);
+    out.push(
+      <span key={i++} className={cls}>
+        {m[0]}
+      </span>,
+    );
     last = m.index + m[0].length;
     if (m[0].length === 0) re.lastIndex++;
   }
@@ -107,9 +116,7 @@ export function EventLog({ agentId, compact }: { agentId?: string; compact?: boo
         (!f.errors || e.isError) &&
         (!t || e.summary.toLowerCase().includes(t) || (e.detail ?? '').toLowerCase().includes(t)),
     );
-    return [...extra, ...rows]
-      .filter((e) => showResults || filter === 'tools' || e.kind !== 'tool_result')
-      .sort((a, b) => b.ts - a.ts);
+    return [...extra, ...rows].filter((e) => showResults || filter === 'tools' || e.kind !== 'tool_result').sort((a, b) => b.ts - a.ts);
   }, [rows, live, target, f, text, showResults, filter]);
 
   const ordered = useMemo(() => merged.slice().reverse(), [merged]);
@@ -125,7 +132,13 @@ export function EventLog({ agentId, compact }: { agentId?: string; compact?: boo
     setMore(r.length >= 300);
   };
 
-  const asText = (list: AgentEvent[]) => list.map((e) => `${fmtDateTime(e.ts)}\t${agents.get(e.agentId)?.name ?? e.agentId}\t${e.kind}\t${e.summary}${e.detail && e.detail !== e.summary ? '\n' + e.detail : ''}`).join('\n');
+  const asText = (list: AgentEvent[]) =>
+    list
+      .map(
+        (e) =>
+          `${fmtDateTime(e.ts)}\t${agents.get(e.agentId)?.name ?? e.agentId}\t${e.kind}\t${e.summary}${e.detail && e.detail !== e.summary ? '\n' + e.detail : ''}`,
+      )
+      .join('\n');
 
   let lastDay = '';
   return (
@@ -137,14 +150,21 @@ export function EventLog({ agentId, compact }: { agentId?: string; compact?: boo
         {!agentId && (
           <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)} style={{ maxWidth: 200 }}>
             <option value="">Tous les agents</option>
-            {[...agents.values()].sort((a, b) => b.lastEventAt - a.lastEventAt).map((a) => (
-              <option key={a.id} value={a.id}>{a.kind === 'subagent' ? '↳ ' : ''}{a.name}</option>
-            ))}
+            {[...agents.values()]
+              .sort((a, b) => b.lastEventAt - a.lastEventAt)
+              .map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.kind === 'subagent' ? '↳ ' : ''}
+                  {a.name}
+                </option>
+              ))}
           </select>
         )}
         <div className="chips">
           {FILTERS.map((x) => (
-            <button key={x.id} className={`chip ${filter === x.id ? 'on' : ''}`} onClick={() => setFilter(x.id)}>{x.label}</button>
+            <button key={x.id} className={`chip ${filter === x.id ? 'on' : ''}`} onClick={() => setFilter(x.id)}>
+              {x.label}
+            </button>
           ))}
         </div>
         <div className="row" style={{ marginLeft: 'auto', gap: 6 }}>
@@ -154,21 +174,45 @@ export function EventLog({ agentId, compact }: { agentId?: string; compact?: boo
           <label className="row small muted" style={{ gap: 5 }}>
             <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> suivre
           </label>
-          <button className="btn sm" title="Copier les lignes affichées" onClick={async () => toast({ type: 'task_end', level: (await copyText(asText(ordered))) ? 'success' : 'error', title: 'Copié', body: `${ordered.length} lignes dans le presse-papiers` })}>Copier</button>
-          <button className="btn sm" onClick={async () => {
-            const r = await api.exportData({ events: merged, name: `journal-${new Date().toISOString().slice(0, 10)}.json` });
-            if (r.ok) toast({ type: 'task_end', level: 'success', title: 'Export', body: r.message });
-          }}>Exporter</button>
+          <button
+            className="btn sm"
+            title="Copier les lignes affichées"
+            onClick={async () =>
+              toast({
+                type: 'task_end',
+                level: (await copyText(asText(ordered))) ? 'success' : 'error',
+                title: 'Copié',
+                body: `${ordered.length} lignes dans le presse-papiers`,
+              })
+            }
+          >
+            Copier
+          </button>
+          <button
+            className="btn sm"
+            onClick={async () => {
+              const r = await api.exportData({ events: merged, name: `journal-${new Date().toISOString().slice(0, 10)}.json` });
+              if (r.ok) toast({ type: 'task_end', level: 'success', title: 'Export', body: r.message });
+            }}
+          >
+            Exporter
+          </button>
         </div>
       </div>
-      <div className="log" ref={box} onScroll={(e) => {
-        const el = e.currentTarget;
-        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
-        if (atBottom !== follow) setFollow(atBottom);
-      }}>
+      <div
+        className="log"
+        ref={box}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+          if (atBottom !== follow) setFollow(atBottom);
+        }}
+      >
         {more && ordered.length > 0 && (
           <div style={{ padding: 8, textAlign: 'center' }}>
-            <button className="btn sm" onClick={loadMore}>Charger les événements plus anciens</button>
+            <button className="btn sm" onClick={loadMore}>
+              Charger les événements plus anciens
+            </button>
           </div>
         )}
         {!ordered.length && <Empty title="Aucun événement">Rien d’observé pour ces filtres.</Empty>}
@@ -180,21 +224,36 @@ export function EventLog({ agentId, compact }: { agentId?: string; compact?: boo
           return (
             <Fragment key={e.id}>
               {sep && <div className="day-sep">{day}</div>}
-              <div className={`log-line ${compact ? 'compact' : ''} ${e.isError ? 'e' : ''} ${open === e.id ? 'open' : ''}`} onClick={() => setOpen(open === e.id ? null : e.id)} title={`${fmtDateTime(e.ts)} · source : ${e.source}`}>
+              <div
+                className={`log-line ${compact ? 'compact' : ''} ${e.isError ? 'e' : ''} ${open === e.id ? 'open' : ''}`}
+                onClick={() => setOpen(open === e.id ? null : e.id)}
+                title={`${fmtDateTime(e.ts)} · source : ${e.source}`}
+              >
                 <span className="faint">{fmtTime(e.ts)}</span>
                 {!compact && (
-                  <span className="ellipsis" style={{ color: a?.color, fontFamily: 'Segoe UI, sans-serif', fontWeight: 600 }} onClick={(ev) => { ev.stopPropagation(); select(e.agentId); }}>
+                  <span
+                    className="ellipsis"
+                    style={{ color: a?.color, fontFamily: 'Segoe UI, sans-serif', fontWeight: 600 }}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      select(e.agentId);
+                    }}
+                  >
                     {a?.name ?? e.agentId}
                   </span>
                 )}
                 <KindTag e={e} />
-                <span className={e.isError ? 'hl-err' : ''} style={{ wordBreak: 'break-word' }}>{highlight(e.summary)}</span>
+                <span className={e.isError ? 'hl-err' : ''} style={{ wordBreak: 'break-word' }}>
+                  {highlight(e.summary)}
+                </span>
               </div>
               {open === e.id && (
                 <pre className="log-detail">
                   {highlight(e.detail || e.summary)}
                   {'\n\n'}
-                  <span className="faint">source : {e.source} · {fmtDateTime(e.ts)}</span>
+                  <span className="faint">
+                    source : {e.source} · {fmtDateTime(e.ts)}
+                  </span>
                 </pre>
               )}
             </Fragment>

@@ -42,7 +42,10 @@ describe('transcript parser', () => {
 
   it('reports subagent spawns and calls onSpawn', () => {
     const spawned: string[] = [];
-    const ev = parseRecord(assistantTool('Agent', { description: 'Explorer', subagent_type: 'Explore', prompt: 'p' }, 'toolu_S'), { agentId: 'cc:x', onSpawn: (id) => spawned.push(id) });
+    const ev = parseRecord(assistantTool('Agent', { description: 'Explorer', subagent_type: 'Explore', prompt: 'p' }, 'toolu_S'), {
+      agentId: 'cc:x',
+      onSpawn: (id) => spawned.push(id),
+    });
     expect(ev[0].kind).toBe('subagent_spawn');
     expect(spawned).toEqual(['toolu_S']);
   });
