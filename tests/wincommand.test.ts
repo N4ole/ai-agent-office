@@ -3,7 +3,7 @@
 
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -19,7 +19,8 @@ import {
   type SpawnSpec,
 } from '../src/main/core/winCommand';
 
-const root = mkdtempSync(path.join(tmpdir(), 'aao-win-'));
+// Long path form: on CI runners tmpdir() is an 8.3 short path (RUNNER~1) while `where` prints long paths.
+const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'aao-win-')));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 // Every character cmd.exe or Windows Terminal could interpret, in a valid Windows folder name.
 const TRAP = path.join(root, 'a&b ^c;d %PATH% (x)!e');
