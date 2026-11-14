@@ -9,6 +9,7 @@ import { createAgent } from '../src/main/core/reducer';
 import { installHooks, uninstallHooks, writeJsonAtomic } from '../src/main/core/hooks';
 import { devHelpers } from '../src/main/core/devHelpers';
 import { hookRecord } from '../src/main/core/hookLog';
+import { validateSettingsPatch } from '../src/main/core/settingsValidation';
 import { PROD_CSP, withDevCsp } from '../src/shared/csp';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../src/main/core/processCheck';
 
@@ -194,5 +195,31 @@ describe('hook relay (hook-events.jsonl)', () => {
     expect(rec).not.toHaveProperty('other');
     expect(rec.ts).toBe(1000);
     expect(hookRecord({ message: 'x'.repeat(2000) }, 1).message!.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe('settings sent by the renderer', () => {
+  it('validates claudePath and claudeHome', () => {
+    const dir = tmp();
+    const exe = path.join(dir, 'claude.cmd');
+    const txt = path.join(dir, 'notes.txt');
+    writeFileSync(exe, '@echo off');
+    writeFileSync(txt, 'x');
+    const ok = (p: object) => validateSettingsPatch(p).errors;
+    expect(ok({ claudePath: 'claude' })).toEqual([]);
+    expect(ok({ claudePath: '' })).toEqual([]);
+    expect(ok({ claudePath: exe })).toEqual([]);
+    expect(ok({ claudePath: path.join(dir, 'missing.exe') })[0]).toMatch(/introuvable/);
+    expect(ok({ claudePath: dir })[0]).toMatch(/pas un fichier/);
+    expect(ok({ claudePath: 'claude & calc' })[0]).toMatch(/invalide/);
+    if (process.platform === 'win32') expect(ok({ claudePath: txt })[0]).toMatch(/exécutable/);
+    expect(ok({ claudeHome: dir })).toEqual([]);
+    expect(ok({ claudeHome: exe })[0]).toMatch(/pas un dossier/);
+    expect(ok({ claudeHome: path.join(dir, 'nope') })[0]).toMatch(/introuvable/);
+    expect(ok({ claudeHome: 'relative/dir' })[0]).toMatch(/absolu/);
+  });
+
+  it('drops unknown keys', () => {
+    expect(validateSettingsPatch({ scanDays: 3, __proto__x: 1, evil: 'x' } as any).patch).toEqual({ scanDays: 3 });
   });
 });

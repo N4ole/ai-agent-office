@@ -61,7 +61,16 @@ export function SettingsView() {
   }, []);
 
   const save = async (patch: Partial<Settings>, quiet = false) => {
-    const s = await api.setSettings(patch);
+    let s: Settings;
+    try {
+      s = await api.setSettings(patch);
+    } catch (e: any) {
+      // Refused by the main process (e.g. Claude Code path not found): show why, restore the field.
+      const msg = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
+      toast({ type: 'error', level: 'error', title: 'Paramètre refusé', body: msg });
+      setDraft(settings);
+      return;
+    }
     store.set({ settings: s });
     if (!quiet) toast({ type: 'task_end', level: 'success', title: 'Paramètres enregistrés', body: '' });
   };

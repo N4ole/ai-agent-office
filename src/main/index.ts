@@ -21,6 +21,7 @@ import { purgeHistory } from './core/purge';
 import { exportToFile } from './db/export';
 import { prepareOfficeHome } from './core/officeHome';
 import { devHelpers } from './core/devHelpers';
+import { validateSettingsPatch } from './core/settingsValidation';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -393,7 +394,10 @@ function registerIpc() {
   ipcMain.handle(IPC.usageByDay, (_e, days: number) => db.usageByDay(Number(days) || 14));
   ipcMain.handle(IPC.getConsole, (_e, agentId: string) => manager.getConsole(agentId));
   ipcMain.handle(IPC.getSettings, () => settings);
-  ipcMain.handle(IPC.setSettings, async (_e, patch: Partial<Settings>) => {
+  ipcMain.handle(IPC.setSettings, async (_e, raw: Partial<Settings>) => {
+    // claudePath is executed and claudeHome is read: never trust the renderer blindly.
+    const { patch, errors } = validateSettingsPatch(raw);
+    if (errors.length) throw new Error(errors.join('\n'));
     const prevDemo = settings.demoMode;
     settings = mergeSettings({ ...settings, ...patch });
     db.setSetting('settings', settings);
