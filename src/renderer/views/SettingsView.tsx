@@ -4,6 +4,7 @@ import { api } from '../api';
 import { store, toast, useStore } from '../store';
 import { Switch, confirmAction } from '../ui';
 import { PRICES, PRICES_AS_OF, PRICES_SOURCE } from '../../shared/pricing';
+import { checkRedactPatterns } from '../../shared/redactPatterns';
 
 const fmtPrice = (v: number) => `${v < 1 ? v.toFixed(v < 0.1 ? 3 : 2) : v % 1 ? v.toFixed(2) : v} $`;
 
@@ -287,15 +288,8 @@ export function SettingsView() {
                     .split('\n')
                     .map((x) => x.trim())
                     .filter(Boolean);
-                  const bad = list.filter((p) => {
-                    try {
-                      new RegExp(p);
-                      return false;
-                    } catch {
-                      return true;
-                    }
-                  });
-                  if (bad.length) return toast({ type: 'error', level: 'error', title: 'Expression invalide', body: bad.join(', ') });
+                  const { errors } = checkRedactPatterns(list);
+                  if (errors.length) return toast({ type: 'error', level: 'error', title: 'Expression refusée', body: errors.join(' · ') });
                   save({ redactPatterns: list });
                 }}
               />
