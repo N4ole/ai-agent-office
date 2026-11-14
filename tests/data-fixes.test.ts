@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OfficeDB } from '../src/main/db/database';
 import { exportToFile } from '../src/main/db/export';
+import { QuotaMonitor } from '../src/main/providers/claude/quota';
+import { killTree } from '../src/main/providers/claude/managed';
 import type { AgentEvent } from '../src/shared/types';
 
 const usage = (id: string, ts: number, output: number): AgentEvent => ({
@@ -98,4 +100,36 @@ describe('database flush (R-14)', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+});
+
+describe('/usage probe timeout (R-15)', () => {
+  it('kills the whole process tree when the probe hangs', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'aao-quota-'));
+    const killed: (number | undefined)[] = [];
+    try {
+      const q = new QuotaMonitor(
+        () => 'claude',
+        dir,
+        () => {},
+        {
+          timeoutMs: 500,
+          // A probe that never answers (and has a child of its own, like claude.cmd → node).
+          command: () => ({
+            file: process.execPath,
+            args: ['-e', "require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1e3)']);setInterval(()=>{},1e3)"],
+          }),
+          killTree: (pid) => {
+            killed.push(pid);
+            killTree(pid);
+          },
+        },
+      );
+      const r = await q.refresh();
+      expect(killed).toHaveLength(1);
+      expect(killed[0]).toBeGreaterThan(0);
+      expect(r.error).toMatch(/délai/i);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
