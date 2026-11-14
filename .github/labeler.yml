@@ -1,0 +1,30 @@
+# Rules for the labeler workflow. Labels match the release-notes categories in .github/release.yml.
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '*.md'
+          - '.github/ISSUE_TEMPLATE/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'package-lock.json'
+          - 'tools/lint/package*.json'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/dependabot.yml'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'SECURITY.md'
+          - 'src/main/core/redact.ts'
+          - 'src/main/core/winCommand.ts'
+          - 'src/main/core/processCheck.ts'
+          - 'src/shared/csp.ts'
+          - 'src/shared/redactPatterns.ts'
