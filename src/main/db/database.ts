@@ -6,6 +6,7 @@ import { promises as fsp, existsSync, readFileSync, renameSync, writeFileSync } 
 import path from 'node:path';
 import type { AgentEvent, AppNotification } from '../../shared/types';
 import type { InternalAgent } from '../core/reducer';
+import { localDay } from '../../shared/dates';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS agents (
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 const NOT_STORED = new Set(['thinking']);
 /** Stored for deduplication/statistics but hidden from logs unless explicitly requested. */
 export const HIDDEN_KINDS = ['usage', 'cost'];
+const HISTORY_CUTOFF_KEY = 'historyCutoff';
 
 export interface EventQuery {
   agentId?: string;
@@ -57,6 +59,11 @@ export class OfficeDB {
   private timer: NodeJS.Timeout | null = null;
   private offsets = new Map<string, number>();
   private saving = false;
+  /** Events older than this (epoch ms) are never stored again: set by an explicit purge (R-01). */
+  private cutoff = 0;
+  private failing = false;
+  /** Receives write failures (and the recovery message); wired to the app log by the main process. */
+  onError?: (message: string) => void;
 
   /** `file` = null keeps everything in memory (tests). */
   constructor(private file: string | null) {}
@@ -79,6 +86,18 @@ export class OfficeDB {
     } else this.db = new S.Database();
     this.db.exec(SCHEMA);
     for (const r of this.all<{ file: string; offset: number }>('SELECT file, offset FROM offsets')) this.offsets.set(r.file, r.offset);
+    this.cutoff = Number(this.getSetting<number>(HISTORY_CUTOFF_KEY)) || 0;
+  }
+
+  /** Epoch ms before which history was purged by the user (0 = never). */
+  get historyCutoff(): number {
+    return this.cutoff;
+  }
+
+  private rememberCutoff(ts: number): void {
+    if (ts <= this.cutoff) return;
+    this.cutoff = ts;
+    this.setSetting(HISTORY_CUTOFF_KEY, ts);
   }
 
   private all<T>(sql: string, params: any[] = []): T[] {
@@ -107,6 +126,15 @@ export class OfficeDB {
     }, 3000);
   }
 
+  /** True while changes made in memory are not yet on disk. */
+  get hasUnsavedChanges(): boolean {
+    return this.dirty;
+  }
+
+  /**
+   * Writes the database to disk. Never rejects: if the write fails (disk full, file locked by an
+   * antivirus...), the changes stay pending, the error is reported once and a retry is scheduled (R-14).
+   */
   async flush(): Promise<void> {
     if (!this.file || !this.dirty || this.saving) return;
     this.saving = true;
@@ -117,9 +145,16 @@ export class OfficeDB {
       await fsp.mkdir(path.dirname(this.file), { recursive: true });
       await fsp.writeFile(tmp, data);
       await fsp.rename(tmp, this.file);
+      if (this.failing) this.onError?.('Base de données de nouveau enregistrée sur le disque');
+      this.failing = false;
+    } catch (e: any) {
+      this.dirty = true;
+      if (!this.failing) this.onError?.(`Impossible d’enregistrer la base de données (${e?.code ?? e?.message ?? e}) : nouvel essai automatique`);
+      this.failing = true;
     } finally {
       this.saving = false;
     }
+    if (this.dirty && this.failing) this.markDirty();
   }
 
   /** Synchronous flush used on application exit. */
@@ -170,6 +205,7 @@ export class OfficeDB {
     try {
       this.db.exec('BEGIN');
       for (const e of events) {
+        if (e.ts < this.cutoff && e.source !== 'demo') continue; // purged history: never re-imported
         if (NOT_STORED.has(e.kind) || e.source === 'demo') {
           fresh.push(e);
           continue;
@@ -246,7 +282,7 @@ export class OfficeDB {
     const rows = this.all<{ ts: number; data: string }>("SELECT ts, data FROM events WHERE kind = 'usage' AND ts >= ?", [since]);
     const m = new Map<string, { input: number; output: number }>();
     for (const r of rows) {
-      const day = new Date(r.ts).toISOString().slice(0, 10);
+      const day = localDay(r.ts);
       let d: any = {};
       try {
         d = JSON.parse(r.data);
@@ -318,22 +354,41 @@ export class OfficeDB {
     this.run('INSERT OR REPLACE INTO offsets (file, offset) VALUES (?, ?)', [file, offset]);
   }
 
+  /** Forgets read offsets of files that no longer exist (R-16). Returns how many were removed. */
+  pruneOffsets(exists: (file: string) => boolean = existsSync): number {
+    const gone = [...this.offsets.keys()].filter((f) => !exists(f));
+    for (const f of gone) {
+      this.offsets.delete(f);
+      this.db.run('DELETE FROM offsets WHERE file = ?', [f]);
+    }
+    if (gone.length) this.markDirty();
+    return gone.length;
+  }
+
   // ---- maintenance ----
-  /** Deletes events/notifications older than `days`, and agents with no activity since then. */
-  purgeOlderThan(days: number): { events: number; agents: number } {
-    const cutoff = Date.now() - days * 86_400_000;
+  /**
+   * Deletes events/notifications older than `days`, and agents with no activity since then.
+   * `remember` (explicit purge by the user) also keeps transcripts from re-importing that period.
+   */
+  purgeOlderThan(days: number, opts: { now?: number; remember?: boolean } = {}): { events: number; agents: number } {
+    const cutoff = (opts.now ?? Date.now()) - days * 86_400_000;
     this.db.run('DELETE FROM events WHERE ts < ?', [cutoff]);
     const ev = this.db.getRowsModified();
     this.db.run('DELETE FROM notifications WHERE ts < ?', [cutoff]);
     this.db.run('DELETE FROM agents WHERE last_event_at < ?', [cutoff]);
     const ag = this.db.getRowsModified();
+    if (opts.remember) this.rememberCutoff(cutoff);
     this.markDirty();
     return { events: ev, agents: ag };
   }
 
-  purgeAll(): void {
-    this.db.exec('DELETE FROM events; DELETE FROM notifications; DELETE FROM agents; DELETE FROM offsets;');
-    this.offsets.clear();
+  /**
+   * Deletes all history. Read offsets are kept and a cutoff date is stored, so transcripts
+   * already read are not imported again at the next start (R-01).
+   */
+  purgeAll(now = Date.now()): void {
+    this.db.exec('DELETE FROM events; DELETE FROM notifications; DELETE FROM agents;');
+    this.rememberCutoff(now);
     this.markDirty();
   }
 
@@ -354,8 +409,30 @@ export class OfficeDB {
     );
   }
 
-  exportAll(): { agents: InternalAgent[]; events: AgentEvent[]; notifications: AppNotification[] } {
-    return { agents: this.loadAgents(), events: this.queryEvents({ limit: 5000 }), notifications: this.loadNotifications(5000) };
+  /**
+   * Every event visible in the logs (usage/cost bookkeeping excluded, as in the former export),
+   * newest first, by pages: the full history never has to sit in one array (R-07).
+   */
+  *eventPages(pageSize = 1000): Generator<AgentEvent[]> {
+    const hidden = HIDDEN_KINDS.map(() => '?').join(',');
+    let last: { ts: number; id: string } | null = null;
+    for (;;) {
+      const rows: any[] = last
+        ? this.all(`SELECT * FROM events WHERE kind NOT IN (${hidden}) AND (ts < ? OR (ts = ? AND id < ?)) ORDER BY ts DESC, id DESC LIMIT ?`, [
+            ...HIDDEN_KINDS,
+            last.ts,
+            last.ts,
+            last.id,
+            pageSize,
+          ])
+        : this.all(`SELECT * FROM events WHERE kind NOT IN (${hidden}) ORDER BY ts DESC, id DESC LIMIT ?`, [...HIDDEN_KINDS, pageSize]);
+      if (!rows.length) return;
+      const page = rows.map(rowToEvent);
+      yield page;
+      if (rows.length < pageSize) return;
+      const tail = page[page.length - 1];
+      last = { ts: tail.ts, id: tail.id };
+    }
   }
 
   close(): void {

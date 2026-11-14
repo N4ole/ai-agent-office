@@ -11,6 +11,7 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import type { QuotaState, QuotaWindow } from '../../../shared/types';
+import { killTree } from './managed';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
@@ -84,17 +85,43 @@ export function windowsFromRateLimit(info: any): QuotaWindow[] {
   return out;
 }
 
+const USAGE_ARGS = ['-p', '--no-session-persistence', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'];
+
+export interface QuotaMonitorOptions {
+  /** Max duration of one /usage probe (default 30 s). */
+  timeoutMs?: number;
+  /** Kills a process and its children (default: taskkill /T on Windows). */
+  killTree?: (pid: number | undefined) => void;
+  /** Program and arguments actually started for the given claude arguments. */
+  command?: (args: string[]) => { file: string; args: string[] };
+}
+
 export class QuotaMonitor {
   private state: QuotaState | null = null;
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<QuotaState> | null = null;
+  /** Set when the probe folder cannot be created: no probe is ever started. */
+  readonly disabled: string | null = null;
+
+  private opts: Required<QuotaMonitorOptions>;
 
   constructor(
     private claudePath: () => string,
     readonly cwd: string,
     private onChange: (q: QuotaState) => void,
+    opts: QuotaMonitorOptions = {},
   ) {
-    mkdirSync(cwd, { recursive: true });
+    this.opts = {
+      timeoutMs: opts.timeoutMs ?? 30_000,
+      killTree: opts.killTree ?? killTree,
+      command: opts.command ?? ((args) => ({ file: this.claudePath(), args })),
+    };
+    try {
+      mkdirSync(cwd, { recursive: true });
+    } catch (e: any) {
+      // Folder unusable (R-22): the app keeps running, quotas are simply unavailable.
+      this.disabled = `Quota désactivé : dossier ${cwd} inaccessible (${e?.code ?? e?.message ?? e})`;
+    }
   }
 
   get(): QuotaState | null {
@@ -135,6 +162,11 @@ export class QuotaMonitor {
 
   refresh(): Promise<QuotaState> {
     if (this.running) return this.running;
+    if (this.disabled) {
+      const q: QuotaState = { plan: 'unknown', windows: this.state?.windows ?? [], fetchedAt: Date.now(), source: 'usage-command', error: this.disabled };
+      this.publish(q);
+      return Promise.resolve(q);
+    }
     this.running = new Promise<QuotaState>((resolve) => {
       const done = (q: QuotaState) => {
         this.running = null;
@@ -146,14 +178,17 @@ export class QuotaMonitor {
       let out = '';
       let child;
       try {
-        child = spawn(this.claudePath(), ['-p', '--no-session-persistence', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'], {
-          cwd: this.cwd,
-          windowsHide: true,
-        });
+        const cmd = this.opts.command(USAGE_ARGS);
+        child = spawn(cmd.file, cmd.args, { cwd: this.cwd, windowsHide: true });
       } catch (e: any) {
         return done({ plan: 'unknown', windows: [], fetchedAt: Date.now(), source: 'usage-command', error: `Claude Code introuvable : ${e?.message ?? e}` });
       }
-      const kill = setTimeout(() => child.kill(), 30_000);
+      let timedOut = false;
+      // child.kill() would only end the first process (e.g. cmd.exe of claude.cmd): kill the whole tree (R-15).
+      const kill = setTimeout(() => {
+        timedOut = true;
+        this.opts.killTree(child.pid);
+      }, this.opts.timeoutMs);
       child.stdout.setEncoding('utf8');
       child.stdout.on('data', (d: string) => (out += d));
       child.on('error', (e) => {
@@ -171,7 +206,14 @@ export class QuotaMonitor {
             /* partial line */
           }
         }
-        if (!text) return done({ plan: 'unknown', windows: [], fetchedAt: Date.now(), source: 'usage-command', error: 'Réponse de /usage vide' });
+        if (!text)
+          return done({
+            plan: 'unknown',
+            windows: [],
+            fetchedAt: Date.now(),
+            source: 'usage-command',
+            error: timedOut ? `Pas de réponse de /usage dans le délai (${Math.round(this.opts.timeoutMs / 1000)} s)` : 'Réponse de /usage vide',
+          });
         const parsed = parseUsageText(text);
         done({
           ...parsed,

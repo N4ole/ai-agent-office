@@ -30,6 +30,8 @@ export class AgentManager implements ProviderSink {
   private resourceNotified = new Map<string, number>();
   private globalCostNotifiedAt = 0;
   private nid = 0;
+  /** Agents seen again after a purge but with no new activity yet (identity + pending patch). */
+  private deferred = new Map<string, { idn: AgentIdentity; patch: Partial<AgentState> }>();
 
   constructor(
     private db: OfficeDB | null,
@@ -74,13 +76,30 @@ export class AgentManager implements ProviderSink {
       if (touched) this.touch(existing);
       return false;
     }
+    const cutoff = this.historyCutoff();
+    if (cutoff && (idn.startedAt || 0) < cutoff) {
+      // Started before a purge: only comes back if it shows new activity (R-01).
+      const prev = this.deferred.get(idn.id);
+      this.deferred.set(idn.id, { idn: { ...prev?.idn, ...idn }, patch: prev?.patch ?? {} });
+      return false;
+    }
+    this.create(idn, live);
+    return true;
+  }
+
+  private historyCutoff(): number {
+    return this.db?.historyCutoff ?? 0;
+  }
+
+  private create(idn: AgentIdentity, live: boolean): InternalAgent {
     const a = createAgent(idn, this.freeDesk());
     this.agents.set(a.id, a);
+    this.deferred.delete(a.id);
     this.touch(a);
     const ev: AgentEvent = {
       id: `detected:${a.id}`,
       agentId: a.id,
-      ts: idn.startedAt || Date.now(),
+      ts: Math.max(idn.startedAt || Date.now(), this.historyCutoff()),
       kind: 'agent_detected',
       summary: a.kind === 'subagent' ? `Sous-agent détecté (${a.role})` : `Agent détecté dans ${a.project}`,
       source: 'app',
@@ -93,12 +112,16 @@ export class AgentManager implements ProviderSink {
         this.notify('subagent_new', 'info', 'Nouveau sous-agent', `${a.name} (${a.role}) créé par ${parent?.name ?? 'son agent parent'}`, a.id);
       } else this.notify('agent_new', 'info', 'Nouvel agent', `${a.name} a rejoint le bureau (${a.project})`, a.id);
     }
-    return true;
+    return a;
   }
 
   patchAgent(id: string, patch: Partial<AgentState>): void {
     const a = this.agents.get(id);
-    if (!a) return;
+    if (!a) {
+      const d = this.deferred.get(id);
+      if (d) Object.assign(d.patch, patch);
+      return;
+    }
     let diff = false;
     for (const [k, v] of Object.entries(patch)) {
       const cur = (a as any)[k];
@@ -111,7 +134,16 @@ export class AgentManager implements ProviderSink {
   }
 
   events(evts: AgentEvent[], live: boolean): void {
+    const cutoff = this.historyCutoff();
+    if (cutoff) evts = evts.filter((e) => e.ts >= cutoff || e.source === 'demo');
     if (!evts.length) return;
+    // New activity of an agent that started before a purge: bring it back now.
+    for (const ev of evts) {
+      const d = this.deferred.get(ev.agentId);
+      if (!d || this.agents.has(ev.agentId)) continue;
+      this.create(d.idn, live);
+      this.patchAgent(ev.agentId, d.patch);
+    }
     const fresh = this.db ? this.db.insertEvents(evts) : evts;
     for (const ev of fresh) {
       const a = this.agents.get(ev.agentId);
@@ -285,6 +317,7 @@ export class AgentManager implements ProviderSink {
       } else if (a.status !== 'working') this.stuckNotified.delete(a.id);
       if ((a.status === 'done' || a.status === 'lost') && a.desk >= 0 && now - (a.endedAt ?? a.lastEventAt) > DESK_RELEASE_MS) {
         a.desk = -1;
+        this.consoles.delete(a.id); // left the office: free its console buffer (R-16)
         this.touch(a);
       }
     }
@@ -321,6 +354,43 @@ export class AgentManager implements ProviderSink {
     if (meta.role?.trim()) a.role = meta.role.trim().slice(0, 60);
     if (meta.color && /^#[0-9a-f]{6}$/i.test(meta.color)) a.color = meta.color;
     this.touch(a);
+  }
+
+  /** Removes an agent from memory and tells the UI (history in the DB is handled by the caller). */
+  private forget(id: string): void {
+    this.agents.delete(id);
+    this.deferred.delete(id);
+    this.consoles.delete(id);
+    this.lastErrorNotif.delete(id);
+    this.stuckNotified.delete(id);
+    this.costNotified.delete(id);
+    this.resourceNotified.delete(id);
+    this.changed.add(id);
+    this.scheduleFlush();
+  }
+
+  /** "Delete all history": every real agent leaves the office. Returns how many were removed. */
+  clearHistory(): number {
+    let n = 0;
+    for (const [id, a] of this.agents) {
+      if (a.demo) continue;
+      this.forget(id);
+      n++;
+    }
+    this.deferred.clear();
+    this.pendingLive = this.pendingLive.filter((e) => e.source === 'demo');
+    return n;
+  }
+
+  /** "Purge older than": removes agents with no activity since `before` and no running process. */
+  purgeBefore(before: number): number {
+    let n = 0;
+    for (const [id, a] of this.agents) {
+      if (a.demo || a.alive.value === true || a.lastEventAt >= before) continue;
+      this.forget(id);
+      n++;
+    }
+    return n;
   }
 
   removeDemoAgents(): void {

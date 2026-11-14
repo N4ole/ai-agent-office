@@ -306,6 +306,7 @@ export function SettingsView() {
                 onClick={async () => {
                   const r = await api.exportData();
                   if (r.ok) toast({ type: 'task_end', level: 'success', title: 'Export', body: r.message });
+                  else if (r.message !== 'Annulé') toast({ type: 'error', level: 'error', title: 'Export', body: r.message });
                 }}
               >
                 Exporter tout (JSON)

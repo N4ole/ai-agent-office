@@ -17,6 +17,9 @@ import { setCustomRedactions } from './core/redact';
 import { hooksStatus, installHooks, uninstallHooks } from './core/hooks';
 import { addUsageCost, progressOf } from './core/reducer';
 import { QuotaMonitor } from './providers/claude/quota';
+import { purgeHistory } from './core/purge';
+import { exportToFile } from './db/export';
+import { prepareOfficeHome } from './core/officeHome';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -29,6 +32,7 @@ let settings: Settings;
 const monitor = new ProcessMonitor();
 let quitting = false;
 let quota: QuotaMonitor;
+let officeHome: { ok: boolean; reason?: string } = { ok: true };
 const quotaAlerted = new Set<string>();
 
 /** Alerts once per window and reset period when usage crosses 80 % then 95 %. */
@@ -99,8 +103,9 @@ function providerFor(agentId: string): AgentProvider | null {
 
 async function main() {
   nativeTheme.themeSource = 'dark';
-  await fsp.mkdir(OFFICE_HOME, { recursive: true });
+  officeHome = prepareOfficeHome(OFFICE_HOME);
   db = new OfficeDB(path.join(app.getPath('userData'), 'office.db'));
+  db.onError = (m) => (manager ? manager.log('error', m) : console.error(`[office] ${m}`));
   await db.open(wasmPath());
   settings = mergeSettings(db.getSetting<Partial<Settings>>('settings'));
   setCustomRedactions(settings.redactPatterns);
@@ -164,6 +169,11 @@ async function main() {
 
   registerIpc();
   createWindow();
+  if (!officeHome.ok) {
+    const msg = `Le dossier ${OFFICE_HOME} n’est pas accessible en écriture (${officeHome.reason}). L’app fonctionne en mode dégradé : quotas d’abonnement et hooks désactivés. Vérifiez les droits de ce dossier puis relancez l’app.`;
+    manager.log('error', msg);
+    manager.notify('error', 'warning', 'Mode dégradé', msg);
+  }
   if (repriced) manager.log('info', `Coût estimé calculé pour ${repriced} agents existants`);
   if (purged.events) manager.log('info', `Rétention : ${purged.events} événements anciens supprimés`);
 
@@ -173,6 +183,11 @@ async function main() {
     .then(() => {
       manager.housekeeping();
       manager.log('info', 'Connecteur Claude Code démarré');
+      // Only when Claude Code's folder is reachable: an unplugged drive must not wipe every offset.
+      if (existsSync(path.join(settings.claudeHome, 'projects'))) {
+        const pruned = db.pruneOffsets();
+        if (pruned) manager.log('info', `${pruned} position(s) de lecture de fichiers disparus oubliée(s)`);
+      }
     })
     .catch((e) => manager.log('error', `Connecteur Claude Code : ${e?.message ?? e}`));
   if (settings.demoMode) await startDemo();
@@ -422,6 +437,7 @@ function registerIpc() {
     demo: settings.demoMode,
   }));
   ipcMain.handle(IPC.installHooks, async () => {
+    if (!officeHome.ok) return { ok: false, message: `Hooks indisponibles : ${OFFICE_HOME} n’est pas accessible en écriture (${officeHome.reason})` };
     try {
       const relay = path.join(__dirname, 'hook-relay.js').replace('app.asar', 'app.asar.unpacked');
       return { ok: true, message: await installHooks(settings.claudeHome, existsSync(relay) ? relay : path.join(__dirname, 'hook-relay.js'), OFFICE_HOME) };
@@ -443,18 +459,21 @@ function registerIpc() {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (r.canceled || !r.filePath) return { ok: false, message: 'Annulé' };
-    const data = payload?.events ? { events: payload.events } : db.exportAll();
-    await fsp.writeFile(r.filePath, JSON.stringify(data, null, 2));
-    return { ok: true, message: `Exporté vers ${r.filePath}` };
+    try {
+      if (payload?.events) {
+        await fsp.writeFile(r.filePath, JSON.stringify({ events: payload.events }, null, 2));
+        return { ok: true, message: `Exporté vers ${r.filePath}` };
+      }
+      const { events } = await exportToFile(db, r.filePath);
+      return { ok: true, message: `Export complet (${events} événements) vers ${r.filePath}` };
+    } catch (e: any) {
+      return { ok: false, message: `Échec de l’export : ${e?.message ?? e}` };
+    }
   });
   ipcMain.handle(IPC.purge, (_e, days: number | 'all') => {
-    if (days === 'all') {
-      db.purgeAll();
-      return { ok: true, message: 'Historique supprimé (les sessions actives réapparaîtront au prochain événement)' };
-    }
-    const r = db.purgeOlderThan(Number(days));
-    for (const [id, a] of manager.agents) if (a.lastEventAt < Date.now() - Number(days) * 86_400_000 && a.status === 'done') manager.agents.delete(id);
-    return { ok: true, message: `${r.events} événements et ${r.agents} agents supprimés` };
+    const r = purgeHistory(db, manager, days);
+    if (r.ok) send(IPC.historyPurged, { before: r.before });
+    return { ok: r.ok, message: r.message };
   });
   ipcMain.handle(IPC.markRead, () => db.markAllRead());
   ipcMain.handle(IPC.pickFolder, async () => {

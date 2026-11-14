@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { appendHookLine } from './core/hookLog';
 
 setTimeout(() => process.exit(0), 2000).unref();
 let input = '';
@@ -27,7 +28,7 @@ process.stdin.on('end', () => {
     };
     const dir = path.join(os.homedir(), '.ai-agent-office');
     fs.mkdirSync(dir, { recursive: true });
-    fs.appendFileSync(path.join(dir, 'hook-events.jsonl'), JSON.stringify(keep) + '\n');
+    appendHookLine(path.join(dir, 'hook-events.jsonl'), JSON.stringify(keep));
   } catch {
     /* never fail the hook */
   }

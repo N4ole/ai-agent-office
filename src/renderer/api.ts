@@ -69,6 +69,8 @@ export interface OfficeApi {
   onConsole(cb: (p: { agentId: string; line: ConsoleLine }) => void): () => void;
   onLog(cb: (p: { level: string; msg: string; ts: number }) => void): () => void;
   onSelectAgent(cb: (id: string) => void): () => void;
+  /** History before `before` (epoch ms) was deleted: drop it from what the UI keeps in memory. */
+  onHistoryPurged(cb: (p: { before: number }) => void): () => void;
 }
 
 declare global {
