@@ -75,7 +75,15 @@ export function lookFor(seed: number, color: string): Look {
 
 function paint(ctx: CanvasRenderingContext2D, rows: string[], y0: number, look: Look) {
   const map: Record<string, string> = {
-    o: '#1b1b26', h: look.hair, s: look.skin, e: '#1b1b26', m: shade(look.skin, 0.7), c: look.shirt, d: look.shirtDark, p: look.pants, b: '#141418',
+    o: '#1b1b26',
+    h: look.hair,
+    s: look.skin,
+    e: '#1b1b26',
+    m: shade(look.skin, 0.7),
+    c: look.shirt,
+    d: look.shirtDark,
+    p: look.pants,
+    b: '#141418',
   };
   rows.forEach((row, y) => {
     for (let x = 0; x < 12; x++) {

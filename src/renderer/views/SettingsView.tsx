@@ -68,7 +68,13 @@ export function SettingsView() {
     <div className="field">
       <label>{label}</label>
       <div className="row">
-        <input type="number" style={{ width: 120 }} value={draft[k] as number} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} onBlur={() => draft[k] !== settings[k] && save({ [k]: draft[k] } as Partial<Settings>)} />
+        <input
+          type="number"
+          style={{ width: 120 }}
+          value={draft[k] as number}
+          onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })}
+          onBlur={() => draft[k] !== settings[k] && save({ [k]: draft[k] } as Partial<Settings>)}
+        />
         {unit && <span className="faint">{unit}</span>}
       </div>
       {hint && <span className="hint">{hint}</span>}
@@ -79,33 +85,54 @@ export function SettingsView() {
   return (
     <div className="page" style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 18, alignItems: 'start' }}>
       <nav className="settings-nav">
-        <div className="label" style={{ padding: '0 10px 6px' }}>Paramètres</div>
+        <div className="label" style={{ padding: '0 10px 6px' }}>
+          Paramètres
+        </div>
         {SECTIONS.map((s) => (
-          <button key={s.id} className={sec === s.id ? 'on' : ''} onClick={() => setSec(s.id)}>{s.label}</button>
+          <button key={s.id} className={sec === s.id ? 'on' : ''} onClick={() => setSec(s.id)}>
+            {s.label}
+          </button>
         ))}
       </nav>
       <div style={{ maxWidth: 760 }}>
         {sec === 'conn' && (
           <div className="card">
-            <div className="card-title">Vérification de l’environnement <button className="btn sm ghost" style={{ marginLeft: 'auto' }} onClick={refresh}>↻ Revérifier</button></div>
+            <div className="card-title">
+              Vérification de l’environnement{' '}
+              <button className="btn sm ghost" style={{ marginLeft: 'auto' }} onClick={refresh}>
+                ↻ Revérifier
+              </button>
+            </div>
             <Checks checks={checks} />
             <div style={{ height: 14 }} />
             <div className="field">
               <label>Exécutable Claude Code</label>
-              <input value={draft.claudePath} onChange={(e) => setDraft({ ...draft, claudePath: e.target.value })} onBlur={() => draft.claudePath !== settings.claudePath && save({ claudePath: draft.claudePath }).then(refresh)} />
+              <input
+                value={draft.claudePath}
+                onChange={(e) => setDraft({ ...draft, claudePath: e.target.value })}
+                onBlur={() => draft.claudePath !== settings.claudePath && save({ claudePath: draft.claudePath }).then(refresh)}
+              />
               <span className="hint">« claude » s’il est dans le PATH, sinon le chemin complet de claude.exe.</span>
             </div>
             <div className="field">
               <label>Dossier de données Claude Code</label>
-              <input value={draft.claudeHome} onChange={(e) => setDraft({ ...draft, claudeHome: e.target.value })} onBlur={() => draft.claudeHome !== settings.claudeHome && save({ claudeHome: draft.claudeHome }).then(refresh)} />
-              <span className="hint">Par défaut ~/.claude (ou CLAUDE_CONFIG_DIR). Redémarrez l’app après modification. Lecture seule : l’app ne modifie jamais ces fichiers.</span>
+              <input
+                value={draft.claudeHome}
+                onChange={(e) => setDraft({ ...draft, claudeHome: e.target.value })}
+                onBlur={() => draft.claudeHome !== settings.claudeHome && save({ claudeHome: draft.claudeHome }).then(refresh)}
+              />
+              <span className="hint">
+                Par défaut ~/.claude (ou CLAUDE_CONFIG_DIR). Redémarrez l’app après modification. Lecture seule : l’app ne modifie jamais ces fichiers.
+              </span>
             </div>
             {num('scanDays', 'Sessions chargées au démarrage', 'Transcripts modifiés pendant cette période.', 'jours')}
           </div>
         )}
         {sec === 'hooks' && (
           <div className="card">
-            <div className="card-title">Hooks optionnels {hooksOk ? <span className="ok small">· installés</span> : <span className="faint small">· non installés</span>}</div>
+            <div className="card-title">
+              Hooks optionnels {hooksOk ? <span className="ok small">· installés</span> : <span className="faint small">· non installés</span>}
+            </div>
             <p className="muted" style={{ marginTop: 0 }}>
               Sans hooks, l’app observe déjà tout via les fichiers de Claude Code. Les hooks ajoutent un signal fiable quand un agent
               <b> attend votre autorisation</b>, et la raison exacte de fin des sessions.
@@ -116,18 +143,38 @@ export function SettingsView() {
               <li>Ne bloquent jamais Claude Code (2 s maximum, erreurs ignorées).</li>
             </ul>
             <div className="row">
-              <button className="btn primary" disabled={hooksOk} onClick={async () => {
-                if (!(await confirmAction('Installer les hooks ?', '~/.claude/settings.json sera modifié (sauvegarde .ai-agent-office.bak créée). Effet sur les nouvelles sessions.', 'Installer', false))) return;
-                const r = await api.installHooks();
-                toast({ type: 'task_end', level: r.ok ? 'success' : 'error', title: 'Hooks', body: r.message });
-                refresh();
-              }}>Installer</button>
-              <button className="btn" disabled={!hooksOk} onClick={async () => {
-                if (!(await confirmAction('Retirer les hooks ?', 'Seules les entrées ajoutées par AI Agent Office seront retirées.', 'Retirer'))) return;
-                const r = await api.uninstallHooks();
-                toast({ type: 'task_end', level: r.ok ? 'success' : 'error', title: 'Hooks', body: r.message });
-                refresh();
-              }}>Retirer</button>
+              <button
+                className="btn primary"
+                disabled={hooksOk}
+                onClick={async () => {
+                  if (
+                    !(await confirmAction(
+                      'Installer les hooks ?',
+                      '~/.claude/settings.json sera modifié (sauvegarde .ai-agent-office.bak créée). Effet sur les nouvelles sessions.',
+                      'Installer',
+                      false,
+                    ))
+                  )
+                    return;
+                  const r = await api.installHooks();
+                  toast({ type: 'task_end', level: r.ok ? 'success' : 'error', title: 'Hooks', body: r.message });
+                  refresh();
+                }}
+              >
+                Installer
+              </button>
+              <button
+                className="btn"
+                disabled={!hooksOk}
+                onClick={async () => {
+                  if (!(await confirmAction('Retirer les hooks ?', 'Seules les entrées ajoutées par AI Agent Office seront retirées.', 'Retirer'))) return;
+                  const r = await api.uninstallHooks();
+                  toast({ type: 'task_end', level: r.ok ? 'success' : 'error', title: 'Hooks', body: r.message });
+                  refresh();
+                }}
+              >
+                Retirer
+              </button>
             </div>
           </div>
         )}
@@ -136,14 +183,25 @@ export function SettingsView() {
             <div className="card">
               <div className="card-title">Notifications</div>
               <table>
-                <thead><tr><th>Événement</th><th style={{ width: 110 }}>Dans l’app</th><th style={{ width: 110 }}>Windows</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Événement</th>
+                    <th style={{ width: 110 }}>Dans l’app</th>
+                    <th style={{ width: 110 }}>Windows</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {(Object.keys(NOTIF_LABEL) as NotificationType[]).map((t) => (
                     <tr key={t}>
                       <td>{NOTIF_LABEL[t]}</td>
                       {(['app', 'os'] as const).map((ch) => (
                         <td key={ch}>
-                          <Switch checked={draft.notifications[t][ch]} onChange={(v) => save({ notifications: { ...draft.notifications, [t]: { ...draft.notifications[t], [ch]: v } } }, true)}>{''}</Switch>
+                          <Switch
+                            checked={draft.notifications[t][ch]}
+                            onChange={(v) => save({ notifications: { ...draft.notifications, [t]: { ...draft.notifications[t], [ch]: v } } }, true)}
+                          >
+                            {''}
+                          </Switch>
                         </td>
                       ))}
                     </tr>
@@ -158,7 +216,12 @@ export function SettingsView() {
                 {num('stuckMinutes', 'Agent « bloqué » après', 'Sans aucun événement (déduction).', 'min')}
                 {num('cpuThresholdPct', 'CPU d’un processus', undefined, '%')}
                 {num('memThresholdMB', 'RAM d’un processus', undefined, 'Mo')}
-                {num('quotaRefreshMin', 'Vérification des quotas toutes les', 'Commande /usage de Claude Code : sans coût, aucun token. 0 = manuelle uniquement.', 'min')}
+                {num(
+                  'quotaRefreshMin',
+                  'Vérification des quotas toutes les',
+                  'Commande /usage de Claude Code : sans coût, aucun token. 0 = manuelle uniquement.',
+                  'min',
+                )}
               </div>
             </div>
           </>
@@ -167,68 +230,152 @@ export function SettingsView() {
           <div className="card">
             <div className="card-title">Tarifs utilisés pour l’estimation</div>
             <p className="muted small" style={{ marginTop: 0 }}>
-              Coût estimé = tokens de chaque réponse (lus dans les transcripts) × tarif API public du modèle qui l’a produite.
-              Vérifié sur vos sessions : l’estimation retombe au centime près sur le relevé écrit par Claude Code.
-              Avec un abonnement claude.ai (Pro, Max…), c’est un équivalent API, pas ce qui vous est facturé.
+              Coût estimé = tokens de chaque réponse (lus dans les transcripts) × tarif API public du modèle qui l’a produite. Vérifié sur vos sessions :
+              l’estimation retombe au centime près sur le relevé écrit par Claude Code. Avec un abonnement claude.ai (Pro, Max…), c’est un équivalent API, pas
+              ce qui vous est facturé.
             </p>
             <table className="small">
-              <thead><tr><th>Modèle</th><th style={{ textAlign: 'right' }}>Entrée</th><th style={{ textAlign: 'right' }}>Cache écrit 5 min</th><th style={{ textAlign: 'right' }}>Cache écrit 1 h</th><th style={{ textAlign: 'right' }}>Cache lu</th><th style={{ textAlign: 'right' }}>Sortie</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Modèle</th>
+                  <th style={{ textAlign: 'right' }}>Entrée</th>
+                  <th style={{ textAlign: 'right' }}>Cache écrit 5 min</th>
+                  <th style={{ textAlign: 'right' }}>Cache écrit 1 h</th>
+                  <th style={{ textAlign: 'right' }}>Cache lu</th>
+                  <th style={{ textAlign: 'right' }}>Sortie</th>
+                </tr>
+              </thead>
               <tbody>
                 {Object.entries(PRICES).map(([id, p]) => (
                   <tr key={id} title={id}>
-                    <td>{p.label}{p.longPrompt && <span className="faint tiny"> · prompts ≤ {p.longPrompt.above / 1000}K</span>}</td>
-                    {[p.input, p.cacheWrite5m, p.cacheWrite1h, p.cacheRead, p.output].map((v, i) => <td key={i} className="mono" style={{ textAlign: 'right' }}>{fmtPrice(v)}</td>)}
+                    <td>
+                      {p.label}
+                      {p.longPrompt && <span className="faint tiny"> · prompts ≤ {p.longPrompt.above / 1000}K</span>}
+                    </td>
+                    {[p.input, p.cacheWrite5m, p.cacheWrite1h, p.cacheRead, p.output].map((v, i) => (
+                      <td key={i} className="mono" style={{ textAlign: 'right' }}>
+                        {fmtPrice(v)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className="faint tiny" style={{ marginTop: 8 }}>
-              En $ par million de tokens · source : {PRICES_SOURCE} ({PRICES_AS_OF}). Haiku 5.5 passe à 0,50 $ / 2,50 $ au-delà de 100K tokens de prompt.
-              Les modèles absents de cette grille sont signalés « tarif inconnu » au lieu d’être estimés.
+              En $ par million de tokens · source : {PRICES_SOURCE} ({PRICES_AS_OF}). Haiku 5.5 passe à 0,50 $ / 2,50 $ au-delà de 100K tokens de prompt. Les
+              modèles absents de cette grille sont signalés « tarif inconnu » au lieu d’être estimés.
             </div>
           </div>
         )}
         {sec === 'data' && (
           <div className="card">
             <div className="card-title">Données et confidentialité</div>
-            <p className="muted" style={{ marginTop: 0 }}>Tout reste sur cet ordinateur. Clés API, tokens, mots de passe et clés privées sont masqués avant tout affichage, enregistrement ou export.</p>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Tout reste sur cet ordinateur. Clés API, tokens, mots de passe et clés privées sont masqués avant tout affichage, enregistrement ou export.
+            </p>
             {num('retentionDays', 'Conservation de l’historique', 'Les données plus anciennes sont supprimées au démarrage.', 'jours')}
             <div className="field">
               <label>Masquages supplémentaires (une expression régulière par ligne)</label>
-              <textarea rows={3} className="mono" value={patterns} placeholder="ex. CLIENT-\d+" onChange={(e) => setPatterns(e.target.value)} onBlur={() => {
-                const list = patterns.split('\n').map((x) => x.trim()).filter(Boolean);
-                const bad = list.filter((p) => { try { new RegExp(p); return false; } catch { return true; } });
-                if (bad.length) return toast({ type: 'error', level: 'error', title: 'Expression invalide', body: bad.join(', ') });
-                save({ redactPatterns: list });
-              }} />
+              <textarea
+                rows={3}
+                className="mono"
+                value={patterns}
+                placeholder="ex. CLIENT-\d+"
+                onChange={(e) => setPatterns(e.target.value)}
+                onBlur={() => {
+                  const list = patterns
+                    .split('\n')
+                    .map((x) => x.trim())
+                    .filter(Boolean);
+                  const bad = list.filter((p) => {
+                    try {
+                      new RegExp(p);
+                      return false;
+                    } catch {
+                      return true;
+                    }
+                  });
+                  if (bad.length) return toast({ type: 'error', level: 'error', title: 'Expression invalide', body: bad.join(', ') });
+                  save({ redactPatterns: list });
+                }}
+              />
             </div>
             <div className="row wrap">
-              <button className="btn" onClick={async () => { const r = await api.exportData(); if (r.ok) toast({ type: 'task_end', level: 'success', title: 'Export', body: r.message }); }}>Exporter tout (JSON)</button>
-              <button className="btn" onClick={async () => {
-                if (!(await confirmAction('Supprimer les anciennes données ?', `Événements et sessions terminées de plus de ${draft.retentionDays} jours.`, 'Supprimer'))) return;
-                const r = await api.purge(draft.retentionDays);
-                toast({ type: 'task_end', level: 'success', title: 'Nettoyage', body: r.message });
-              }}>Purger l’ancien</button>
-              <button className="btn danger" onClick={async () => {
-                if (!(await confirmAction('Tout effacer ?', 'Tout l’historique enregistré par AI Agent Office sera supprimé. Les fichiers de Claude Code ne sont jamais modifiés.', 'Tout effacer'))) return;
-                const r = await api.purge('all');
-                toast({ type: 'task_end', level: 'success', title: 'Nettoyage', body: r.message });
-              }}>Tout effacer</button>
+              <button
+                className="btn"
+                onClick={async () => {
+                  const r = await api.exportData();
+                  if (r.ok) toast({ type: 'task_end', level: 'success', title: 'Export', body: r.message });
+                }}
+              >
+                Exporter tout (JSON)
+              </button>
+              <button
+                className="btn"
+                onClick={async () => {
+                  if (
+                    !(await confirmAction(
+                      'Supprimer les anciennes données ?',
+                      `Événements et sessions terminées de plus de ${draft.retentionDays} jours.`,
+                      'Supprimer',
+                    ))
+                  )
+                    return;
+                  const r = await api.purge(draft.retentionDays);
+                  toast({ type: 'task_end', level: 'success', title: 'Nettoyage', body: r.message });
+                }}
+              >
+                Purger l’ancien
+              </button>
+              <button
+                className="btn danger"
+                onClick={async () => {
+                  if (
+                    !(await confirmAction(
+                      'Tout effacer ?',
+                      'Tout l’historique enregistré par AI Agent Office sera supprimé. Les fichiers de Claude Code ne sont jamais modifiés.',
+                      'Tout effacer',
+                    ))
+                  )
+                    return;
+                  const r = await api.purge('all');
+                  toast({ type: 'task_end', level: 'success', title: 'Nettoyage', body: r.message });
+                }}
+              >
+                Tout effacer
+              </button>
             </div>
           </div>
         )}
         {sec === 'look' && (
           <div className="card">
             <div className="card-title">Apparence</div>
-            <Switch checked={light} onChange={(v) => {
-              setLight(v);
-              document.documentElement.dataset.theme = v ? 'light' : 'dark';
-              try { localStorage.setItem('theme', v ? 'light' : 'dark'); } catch { /* ignore */ }
-            }}>Thème clair <span className="faint">(sombre par défaut)</span></Switch>
-            <div className="faint small" style={{ marginTop: 4 }}>L’éclairage du bureau suit l’heure réelle : jour, crépuscule, nuit.</div>
-            <div className="card-title" style={{ marginTop: 18 }}>Mode démonstration</div>
-            <Switch checked={draft.demoMode} onChange={(v) => save({ demoMode: v })}>Afficher des agents fictifs</Switch>
-            <div className="faint small" style={{ marginTop: 4 }}>Badge DÉMO, jamais enregistrés, aucune commande réelle. Retirés dès que vous désactivez l’option.</div>
+            <Switch
+              checked={light}
+              onChange={(v) => {
+                setLight(v);
+                document.documentElement.dataset.theme = v ? 'light' : 'dark';
+                try {
+                  localStorage.setItem('theme', v ? 'light' : 'dark');
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              Thème clair <span className="faint">(sombre par défaut)</span>
+            </Switch>
+            <div className="faint small" style={{ marginTop: 4 }}>
+              L’éclairage du bureau suit l’heure réelle : jour, crépuscule, nuit.
+            </div>
+            <div className="card-title" style={{ marginTop: 18 }}>
+              Mode démonstration
+            </div>
+            <Switch checked={draft.demoMode} onChange={(v) => save({ demoMode: v })}>
+              Afficher des agents fictifs
+            </Switch>
+            <div className="faint small" style={{ marginTop: 4 }}>
+              Badge DÉMO, jamais enregistrés, aucune commande réelle. Retirés dès que vous désactivez l’option.
+            </div>
           </div>
         )}
       </div>

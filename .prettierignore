@@ -1,0 +1,10 @@
+node_modules/
+tools/lint/node_modules/
+dist/
+release/
+coverage/
+build/
+package-lock.json
+tools/lint/package-lock.json
+# Hand-written documentation: tables and line breaks are kept as authored.
+*.md

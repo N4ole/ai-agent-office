@@ -3,7 +3,21 @@ import { createAgent, progressOf, reduce } from '../src/main/core/reducer';
 import { parseRecord } from '../src/main/providers/claude/parser';
 import { assistantTool, costState, toolResult, turnDuration, userPrompt } from './fixtures';
 
-const mk = () => createAgent({ id: 'cc:a', provider: 'claude-code', kind: 'session', sessionId: 's', name: 'Session 1234', role: 'Agent principal', project: 'p', cwd: 'C:\\p', startedAt: Date.now() - 1000 }, 0);
+const mk = () =>
+  createAgent(
+    {
+      id: 'cc:a',
+      provider: 'claude-code',
+      kind: 'session',
+      sessionId: 's',
+      name: 'Session 1234',
+      role: 'Agent principal',
+      project: 'p',
+      cwd: 'C:\\p',
+      startedAt: Date.now() - 1000,
+    },
+    0,
+  );
 const feed = (a: ReturnType<typeof mk>, rec: object, live = true) => {
   for (const e of parseRecord(rec as any, { agentId: a.id })) reduce(a, e, live);
   return a;
@@ -78,7 +92,19 @@ describe('agent reducer', () => {
   it('measures progress only from a todo list', () => {
     const a = mk();
     expect(progressOf(a).source).toBe('unavailable');
-    feed(a, assistantTool('TodoWrite', { todos: [{ content: 'A', status: 'completed' }, { content: 'B', status: 'in_progress' }] }, 't'));
+    feed(
+      a,
+      assistantTool(
+        'TodoWrite',
+        {
+          todos: [
+            { content: 'A', status: 'completed' },
+            { content: 'B', status: 'in_progress' },
+          ],
+        },
+        't',
+      ),
+    );
     expect(progressOf(a)).toMatchObject({ value: 0.5, source: 'observed' });
     expect(a.currentTask.value).toBe('B');
   });

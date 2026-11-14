@@ -1,0 +1,14 @@
+{
+  "name": "ai-agent-office-lint",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Isolated ESLint toolchain. typescript-eslint needs the TypeScript JS API (<6.1), which TypeScript 7 no longer ships; the app itself keeps TypeScript 7 for type checking.",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.0.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.14.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.2"
+  }
+}

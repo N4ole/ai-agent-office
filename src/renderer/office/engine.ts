@@ -99,7 +99,10 @@ export class OfficeEngine {
   /** Screen pixels hidden at the top by overlays (live ticker). */
   topInset = 104;
 
-  constructor(private canvas: HTMLCanvasElement, private cb: EngineCallbacks) {
+  constructor(
+    private canvas: HTMLCanvasElement,
+    private cb: EngineCallbacks,
+  ) {
     this.ctx = canvas.getContext('2d')!;
     this.buildLayout(4);
     this.bindInput();
@@ -263,7 +266,12 @@ export class OfficeEngine {
       if (cur === goal) break;
       const cx = cur % W;
       const cy = (cur - cx) / W;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
         const nx = cx + dx;
         const ny = cy + dy;
         const ni = ny * W + nx;
@@ -284,9 +292,23 @@ export class OfficeEngine {
     const start = fresh ? this.layout.door : this.seatOf(a.desk);
     const now = performance.now();
     this.actors.set(a.id, {
-      id: a.id, x: start.x, y: start.y, path: [], goal: '', seated: false, walkT: 0, leaving: false, gone: false,
+      id: a.id,
+      x: start.x,
+      y: start.y,
+      path: [],
+      goal: '',
+      seated: false,
+      walkT: 0,
+      leaving: false,
+      gone: false,
       briefUntil: a.kind === 'subagent' && fresh ? now + 2500 : 0,
-      reportedDone: a.status === 'done', arrivedAt: 0, celebrateUntil: 0, lastActionKey: a.lastAction.value ?? '', actionShownAt: 0, statusSince: now, lastStatus: a.status,
+      reportedDone: a.status === 'done',
+      arrivedAt: 0,
+      celebrateUntil: 0,
+      lastActionKey: a.lastAction.value ?? '',
+      actionShownAt: 0,
+      statusSince: now,
+      lastStatus: a.status,
     });
   }
 
@@ -715,7 +737,20 @@ export class OfficeEngine {
     ctx.fillRect(mx + 6, my + 10, 2, 3);
     let glow = '#2b2f36';
     if (a) {
-      const map: Record<string, string> = { coding: '#4dabf7', reading: '#9775fa', testing: '#69db7c', command: '#ced4da', searching: '#3bc9db', browsing: '#66d9e8', thinking: '#748ffc', delegating: '#ffa94d', error: '#ff6b6b', waiting: '#ffd43b', idle: '#495057', done: '#69db7c' };
+      const map: Record<string, string> = {
+        coding: '#4dabf7',
+        reading: '#9775fa',
+        testing: '#69db7c',
+        command: '#ced4da',
+        searching: '#3bc9db',
+        browsing: '#66d9e8',
+        thinking: '#748ffc',
+        delegating: '#ffa94d',
+        error: '#ff6b6b',
+        waiting: '#ffd43b',
+        idle: '#495057',
+        done: '#69db7c',
+      };
       glow = map[a.activity] ?? '#495057';
       if (a.status === 'lost') glow = t % 600 < 300 ? '#fa5252' : '#212529';
       if (a.status === 'done') glow = '#3d4a3f';

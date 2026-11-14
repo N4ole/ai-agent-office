@@ -40,7 +40,12 @@ function quotaAlerts(q: QuotaState) {
       if (quotaAlerted.has(key)) break;
       quotaAlerted.add(key);
       const when = w.resetsAt ? new Date(w.resetsAt).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'inconnue';
-      manager.notify('quota', level >= 95 ? 'error' : 'warning', `Quota ${w.label} : ${Math.round(w.usedPct)} % utilisé`, `Il reste ${Math.max(0, Math.round(100 - w.usedPct))} %. Réinitialisation : ${when}.`);
+      manager.notify(
+        'quota',
+        level >= 95 ? 'error' : 'warning',
+        `Quota ${w.label} : ${Math.round(w.usedPct)} % utilisé`,
+        `Il reste ${Math.max(0, Math.round(100 - w.usedPct))} %. Réinitialisation : ${when}.`,
+      );
       break;
     }
   }
@@ -58,10 +63,13 @@ if (!app.requestSingleInstanceLock()) {
       win.focus();
     }
   });
-  app.whenReady().then(main).catch((e) => {
-    dialog.showErrorBox('AI Agent Office', `Erreur au démarrage : ${e?.stack ?? e}`);
-    app.exit(1);
-  });
+  app
+    .whenReady()
+    .then(main)
+    .catch((e) => {
+      dialog.showErrorBox('AI Agent Office', `Erreur au démarrage : ${e?.stack ?? e}`);
+      app.exit(1);
+    });
 }
 
 function send(channel: string, payload: unknown) {
@@ -98,27 +106,31 @@ async function main() {
   setCustomRedactions(settings.redactPatterns);
   const purged = db.purgeOlderThan(settings.retentionDays);
 
-  manager = new AgentManager(db, {
-    agentsChanged: (agents, removed) => send(IPC.agentsPatch, { agents: agents.map(withProgress), removed }),
-    liveEvents: (events) => send(IPC.events, events),
-    notification: (n, osNotif) => {
-      send(IPC.notification, n);
-      if (osNotif && Notification.isSupported()) {
-        const nn = new Notification({ title: n.title, body: n.body, silent: n.level === 'info' });
-        nn.on('click', () => {
-          win?.show();
-          win?.focus();
-          if (n.agentId) send('office:select-agent', n.agentId);
-        });
-        nn.show();
-      }
+  manager = new AgentManager(
+    db,
+    {
+      agentsChanged: (agents, removed) => send(IPC.agentsPatch, { agents: agents.map(withProgress), removed }),
+      liveEvents: (events) => send(IPC.events, events),
+      notification: (n, osNotif) => {
+        send(IPC.notification, n);
+        if (osNotif && Notification.isSupported()) {
+          const nn = new Notification({ title: n.title, body: n.body, silent: n.level === 'info' });
+          nn.on('click', () => {
+            win?.show();
+            win?.focus();
+            if (n.agentId) send('office:select-agent', n.agentId);
+          });
+          nn.show();
+        }
+      },
+      console: (agentId, line) => send(IPC.console, { agentId, line }),
+      log: (level, msg) => {
+        console[level === 'error' ? 'error' : 'log'](`[office] ${msg}`);
+        send(IPC.log, { level, msg, ts: Date.now() });
+      },
     },
-    console: (agentId, line) => send(IPC.console, { agentId, line }),
-    log: (level, msg) => {
-      console[level === 'error' ? 'error' : 'log'](`[office] ${msg}`);
-      send(IPC.log, { level, msg, ts: Date.now() });
-    },
-  }, () => settings);
+    () => settings,
+  );
   manager.restore(db.loadAgents());
   // Agents saved before cost estimation existed: re-price them from their stored usage events.
   let repriced = 0;
@@ -131,10 +143,14 @@ async function main() {
     }
   }
 
-  quota = new QuotaMonitor(() => settings.claudePath || 'claude', path.join(OFFICE_HOME, 'quota'), (q) => {
-    send(IPC.quota, q);
-    quotaAlerts(q);
-  });
+  quota = new QuotaMonitor(
+    () => settings.claudePath || 'claude',
+    path.join(OFFICE_HOME, 'quota'),
+    (q) => {
+      send(IPC.quota, q);
+      quotaAlerts(q);
+    },
+  );
 
   claude = new ClaudeProvider({
     ignoreCwds: () => [quota.cwd],
@@ -152,10 +168,13 @@ async function main() {
   if (purged.events) manager.log('info', `Rétention : ${purged.events} événements anciens supprimés`);
 
   // Start observation after the window exists so the user sees agents appear.
-  claude.start(manager).then(() => {
-    manager.housekeeping();
-    manager.log('info', 'Connecteur Claude Code démarré');
-  }).catch((e) => manager.log('error', `Connecteur Claude Code : ${e?.message ?? e}`));
+  claude
+    .start(manager)
+    .then(() => {
+      manager.housekeeping();
+      manager.log('info', 'Connecteur Claude Code démarré');
+    })
+    .catch((e) => manager.log('error', `Connecteur Claude Code : ${e?.message ?? e}`));
   if (settings.demoMode) await startDemo();
 
   // Quota check (/usage: answered locally by Claude Code, no token used).
@@ -181,15 +200,25 @@ async function stopDemo() {
   manager.removeDemoAgents();
 }
 
-interface WinState { x: number; y: number; width: number; height: number; maximized: boolean }
+interface WinState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  maximized: boolean;
+}
 
 /** Window size that fits the screen it opens on (laptops at 125-150 % scaling have ~1280x720 usable). */
 function initialBounds(): Partial<WinState> {
   const saved = db.getSetting<WinState>('window');
-  if (saved && screen.getAllDisplays().some((d) => {
-    const a = d.workArea;
-    return saved.x < a.x + a.width - 100 && saved.x + saved.width > a.x + 100 && saved.y >= a.y - 10 && saved.y < a.y + a.height - 100;
-  })) return saved;
+  if (
+    saved &&
+    screen.getAllDisplays().some((d) => {
+      const a = d.workArea;
+      return saved.x < a.x + a.width - 100 && saved.x + saved.width > a.x + 100 && saved.y >= a.y - 10 && saved.y < a.y + a.height - 100;
+    })
+  )
+    return saved;
   const wa = screen.getPrimaryDisplay().workAreaSize;
   const width = Math.min(1500, Math.round(wa.width * 0.92));
   const height = Math.min(920, Math.round(wa.height * 0.92));
@@ -286,21 +315,38 @@ app.on('window-all-closed', () => app.quit());
 
 function checkCmd(cmd: string, args: string[]): Promise<{ ok: boolean; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { windowsHide: true, timeout: 15000 }, (err, stdout, stderr) => resolve({ ok: !err, out: (stdout || stderr || err?.message || '').trim() }));
+    execFile(cmd, args, { windowsHide: true, timeout: 15000 }, (err, stdout, stderr) =>
+      resolve({ ok: !err, out: (stdout || stderr || err?.message || '').trim() }),
+    );
   });
 }
 
 async function setupChecks(): Promise<SetupCheck[]> {
   const checks: SetupCheck[] = [];
   const c = await checkCmd(settings.claudePath || 'claude', ['--version']);
-  checks.push({ id: 'claude', label: 'Claude Code CLI', ok: c.ok, detail: c.ok ? c.out : `Introuvable (${c.out}). Installez Claude Code ou indiquez son chemin dans les paramètres.` });
+  checks.push({
+    id: 'claude',
+    label: 'Claude Code CLI',
+    ok: c.ok,
+    detail: c.ok ? c.out : `Introuvable (${c.out}). Installez Claude Code ou indiquez son chemin dans les paramètres.`,
+  });
   const home = settings.claudeHome;
   const hasHome = existsSync(home);
   checks.push({ id: 'home', label: 'Dossier de données Claude Code', ok: hasHome, detail: hasHome ? home : `${home} introuvable` });
   const hasProjects = existsSync(path.join(home, 'projects'));
-  checks.push({ id: 'projects', label: 'Transcripts de sessions (projects/)', ok: hasProjects, detail: hasProjects ? 'Lecture seule, aucune modification' : 'Aucun transcript : lancez une session Claude Code une première fois' });
+  checks.push({
+    id: 'projects',
+    label: 'Transcripts de sessions (projects/)',
+    ok: hasProjects,
+    detail: hasProjects ? 'Lecture seule, aucune modification' : 'Aucun transcript : lancez une session Claude Code une première fois',
+  });
   const hasSessions = existsSync(path.join(home, 'sessions'));
-  checks.push({ id: 'sessions', label: 'Registre des sessions actives (sessions/)', ok: hasSessions, detail: hasSessions ? 'Détection des PID et statuts busy/idle' : 'Absent : statut en direct déduit des transcripts uniquement' });
+  checks.push({
+    id: 'sessions',
+    label: 'Registre des sessions actives (sessions/)',
+    ok: hasSessions,
+    detail: hasSessions ? 'Détection des PID et statuts busy/idle' : 'Absent : statut en direct déduit des transcripts uniquement',
+  });
   try {
     await fsp.access(home, (await import('node:fs')).constants.R_OK);
     checks.push({ id: 'perm', label: 'Permission de lecture', ok: true, detail: 'OK' });
@@ -308,7 +354,12 @@ async function setupChecks(): Promise<SetupCheck[]> {
     checks.push({ id: 'perm', label: 'Permission de lecture', ok: false, detail: `Impossible de lire ${home}` });
   }
   const node = await checkCmd('node', ['--version']);
-  checks.push({ id: 'node', label: 'Node.js (pour les hooks optionnels)', ok: node.ok, detail: node.ok ? node.out : 'Absent : les hooks optionnels ne pourront pas être utilisés (le reste fonctionne)' });
+  checks.push({
+    id: 'node',
+    label: 'Node.js (pour les hooks optionnels)',
+    ok: node.ok,
+    detail: node.ok ? node.out : 'Absent : les hooks optionnels ne pourront pas être utilisés (le reste fonctionne)',
+  });
   const hooks = await hooksStatus(home);
   checks.push({ id: 'hooks', label: 'Hooks optionnels (alertes « en attente »)', ok: hooks, detail: hooks ? 'Installés' : 'Non installés (facultatif)' });
   const wt = await checkCmd('where', ['wt']);
@@ -386,7 +437,11 @@ function registerIpc() {
     }
   });
   ipcMain.handle(IPC.exportData, async (_e, payload?: { events?: unknown[]; name?: string }) => {
-    const r = await dialog.showSaveDialog(win!, { title: 'Exporter', defaultPath: payload?.name ?? `ai-agent-office-${new Date().toISOString().slice(0, 10)}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] });
+    const r = await dialog.showSaveDialog(win!, {
+      title: 'Exporter',
+      defaultPath: payload?.name ?? `ai-agent-office-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    });
     if (r.canceled || !r.filePath) return { ok: false, message: 'Annulé' };
     const data = payload?.events ? { events: payload.events } : db.exportAll();
     await fsp.writeFile(r.filePath, JSON.stringify(data, null, 2));

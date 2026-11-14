@@ -107,7 +107,18 @@ export class ClaudeProvider implements AgentProvider {
         const id = sessionAgentId(sid);
         const project = path.basename(proc.cwd);
         this.sink.upsertAgent(
-          { id, provider: 'claude-code', kind: 'session', sessionId: sid, name: proc.opts.name || `Session ${sid.slice(0, 8)}`, role: 'Agent principal (piloté par l’app)', project, cwd: proc.cwd, startedAt: proc.startedAt, managed: true },
+          {
+            id,
+            provider: 'claude-code',
+            kind: 'session',
+            sessionId: sid,
+            name: proc.opts.name || `Session ${sid.slice(0, 8)}`,
+            role: 'Agent principal (piloté par l’app)',
+            project,
+            cwd: proc.cwd,
+            startedAt: proc.startedAt,
+            managed: true,
+          },
           true,
         );
         this.sink.patchAgent(id, {
@@ -116,15 +127,54 @@ export class ClaudeProvider implements AgentProvider {
           pid: { value: proc.child.pid ?? null, source: proc.child.pid ? 'observed' : 'unavailable', note: 'Processus lancé par l’app' },
           alive: { value: true, source: 'observed' },
         });
-        this.sink.events([{ id: `managed-start:${sid}:${proc.startedAt}`, agentId: id, ts: Date.now(), kind: 'session_start', summary: proc.opts.resumeSessionId ? 'Session reprise depuis l’app' : 'Session lancée depuis l’app', source: 'managed' }], true);
-        this.sink.events([{ id: `managed-busy:${sid}:${Date.now()}`, agentId: id, ts: Date.now(), kind: 'status_change', summary: proc.busy ? 'Traite une instruction' : 'Prête, en attente d’instruction', source: 'managed', data: { status: proc.busy ? 'working' : 'idle', provenance: 'observed' } }], true);
+        this.sink.events(
+          [
+            {
+              id: `managed-start:${sid}:${proc.startedAt}`,
+              agentId: id,
+              ts: Date.now(),
+              kind: 'session_start',
+              summary: proc.opts.resumeSessionId ? 'Session reprise depuis l’app' : 'Session lancée depuis l’app',
+              source: 'managed',
+            },
+          ],
+          true,
+        );
+        this.sink.events(
+          [
+            {
+              id: `managed-busy:${sid}:${Date.now()}`,
+              agentId: id,
+              ts: Date.now(),
+              kind: 'status_change',
+              summary: proc.busy ? 'Traite une instruction' : 'Prête, en attente d’instruction',
+              source: 'managed',
+              data: { status: proc.busy ? 'working' : 'idle', provenance: 'observed' },
+            },
+          ],
+          true,
+        );
       },
       onConsole: (sid, key, line) => {
         this.sink.console(sid ? sessionAgentId(sid) : `pending:${key}`, line);
       },
       onRateLimit: (info) => o.onRateLimit?.(info),
       onTurnResult: (sid, ok, summary) => {
-        this.sink.events([{ id: `turn:${sid}:${Date.now()}`, agentId: sessionAgentId(sid), ts: Date.now(), kind: 'status_change', summary: `Tour terminé : ${summary}`, source: 'managed', isError: !ok, data: { status: 'idle', provenance: 'observed' } }], true);
+        this.sink.events(
+          [
+            {
+              id: `turn:${sid}:${Date.now()}`,
+              agentId: sessionAgentId(sid),
+              ts: Date.now(),
+              kind: 'status_change',
+              summary: `Tour terminé : ${summary}`,
+              source: 'managed',
+              isError: !ok,
+              data: { status: 'idle', provenance: 'observed' },
+            },
+          ],
+          true,
+        );
       },
       onExit: (sid, _key, code, requested, stderrTail) => {
         if (!sid) {
@@ -136,12 +186,33 @@ export class ClaudeProvider implements AgentProvider {
         this.sink.events(
           [
             clean_
-              ? { id: `exit:${sid}:${Date.now()}`, agentId: id, ts: Date.now(), kind: 'session_end', summary: requested ? 'Arrêtée depuis l’app' : 'Processus terminé normalement', source: 'managed', data: { provenance: 'observed' } }
-              : { id: `lost:${sid}:${Date.now()}`, agentId: id, ts: Date.now(), kind: 'process_lost', summary: `Processus arrêté avec le code ${code}${stderrTail ? ' : ' + firstLine(clean(stderrTail), 200) : ''}`, source: 'managed', isError: true },
+              ? {
+                  id: `exit:${sid}:${Date.now()}`,
+                  agentId: id,
+                  ts: Date.now(),
+                  kind: 'session_end',
+                  summary: requested ? 'Arrêtée depuis l’app' : 'Processus terminé normalement',
+                  source: 'managed',
+                  data: { provenance: 'observed' },
+                }
+              : {
+                  id: `lost:${sid}:${Date.now()}`,
+                  agentId: id,
+                  ts: Date.now(),
+                  kind: 'process_lost',
+                  summary: `Processus arrêté avec le code ${code}${stderrTail ? ' : ' + firstLine(clean(stderrTail), 200) : ''}`,
+                  source: 'managed',
+                  isError: true,
+                },
           ],
           true,
         );
-        this.sink.patchAgent(id, { alive: { value: false, source: 'observed' }, pid: { value: null, source: 'unavailable', note: 'Processus terminé' }, cpu: { value: null, source: 'unavailable' }, memoryMB: { value: null, source: 'unavailable' } });
+        this.sink.patchAgent(id, {
+          alive: { value: false, source: 'observed' },
+          pid: { value: null, source: 'unavailable', note: 'Processus terminé' },
+          cpu: { value: null, source: 'unavailable' },
+          memoryMB: { value: null, source: 'unavailable' },
+        });
       },
     });
   }
@@ -233,7 +304,7 @@ export class ClaudeProvider implements AgentProvider {
   // ---------- registry ----------
 
   async pollRegistry(): Promise<void> {
-    let names: string[] = [];
+    let names: string[];
     try {
       names = (await fsp.readdir(this.sessionsDir)).filter((n) => n.endsWith('.json'));
     } catch {
@@ -250,7 +321,17 @@ export class ClaudeProvider implements AgentProvider {
         else {
           const j = JSON.parse(await fsp.readFile(file, 'utf8'));
           if (!j.sessionId || !j.pid) continue;
-          entry = { pid: Number(j.pid), sessionId: String(j.sessionId), cwd: String(j.cwd ?? ''), status: j.status, name: j.name, kind: j.kind, entrypoint: j.entrypoint, startedAt: Number(j.startedAt) || undefined, file };
+          entry = {
+            pid: Number(j.pid),
+            sessionId: String(j.sessionId),
+            cwd: String(j.cwd ?? ''),
+            status: j.status,
+            name: j.name,
+            kind: j.kind,
+            entrypoint: j.entrypoint,
+            startedAt: Number(j.startedAt) || undefined,
+            file,
+          };
           this.registryMtimes.set(file, st.mtimeMs);
         }
       } catch {
@@ -269,8 +350,25 @@ export class ClaudeProvider implements AgentProvider {
       const id = sessionAgentId(sid);
       const alive = isPidAlive(e.pid);
       if (!alive) {
-        this.sink.events([{ id: `regexit:${sid}:${e.pid}`, agentId: id, ts: Date.now(), kind: 'session_end', summary: 'Session fermée (retirée du registre Claude Code)', source: 'registry', data: { provenance: 'observed' } }], true);
-        this.sink.patchAgent(id, { pid: { value: null, source: 'unavailable', note: 'Processus terminé' }, cpu: { value: null, source: 'unavailable' }, memoryMB: { value: null, source: 'unavailable' } });
+        this.sink.events(
+          [
+            {
+              id: `regexit:${sid}:${e.pid}`,
+              agentId: id,
+              ts: Date.now(),
+              kind: 'session_end',
+              summary: 'Session fermée (retirée du registre Claude Code)',
+              source: 'registry',
+              data: { provenance: 'observed' },
+            },
+          ],
+          true,
+        );
+        this.sink.patchAgent(id, {
+          pid: { value: null, source: 'unavailable', note: 'Processus terminé' },
+          cpu: { value: null, source: 'unavailable' },
+          memoryMB: { value: null, source: 'unavailable' },
+        });
         this.endChildren(sid, 'Session parente fermée');
       }
     }
@@ -318,15 +416,42 @@ export class ClaudeProvider implements AgentProvider {
       // While the transcript reports a tool error, keep "error" until the registry moves on.
       if (statusChanged && !(a.status === 'error' && mapped === 'working' && prev?.status === e.status)) {
         this.sink.events(
-          [{ id: `reg:${e.sessionId}:${e.status}:${Date.now()}`, agentId: id, ts: Date.now(), kind: 'status_change', summary: `Statut Claude Code : ${e.status ?? 'inconnu'}`, source: 'registry', data: { status: mapped, provenance: 'observed', raw: e.status } }],
+          [
+            {
+              id: `reg:${e.sessionId}:${e.status}:${Date.now()}`,
+              agentId: id,
+              ts: Date.now(),
+              kind: 'status_change',
+              summary: `Statut Claude Code : ${e.status ?? 'inconnu'}`,
+              source: 'registry',
+              data: { status: mapped, provenance: 'observed', raw: e.status },
+            },
+          ],
           true,
         );
       }
     } else if (!this.lostReported.has(e.sessionId) && !this.managed.isRunning(e.sessionId)) {
       // Registry file still present but process gone: crash or forced kill.
       this.lostReported.add(e.sessionId);
-      this.sink.events([{ id: `lost:${e.sessionId}:${e.pid}`, agentId: id, ts: Date.now(), kind: 'process_lost', summary: `Processus ${e.pid} introuvable alors que la session est encore enregistrée (plantage ou arrêt forcé)`, source: 'registry', isError: true }], true);
-      this.sink.patchAgent(id, { pid: { value: e.pid, source: 'observed', note: 'Processus disparu' }, cpu: { value: null, source: 'unavailable' }, memoryMB: { value: null, source: 'unavailable' } });
+      this.sink.events(
+        [
+          {
+            id: `lost:${e.sessionId}:${e.pid}`,
+            agentId: id,
+            ts: Date.now(),
+            kind: 'process_lost',
+            summary: `Processus ${e.pid} introuvable alors que la session est encore enregistrée (plantage ou arrêt forcé)`,
+            source: 'registry',
+            isError: true,
+          },
+        ],
+        true,
+      );
+      this.sink.patchAgent(id, {
+        pid: { value: e.pid, source: 'observed', note: 'Processus disparu' },
+        cpu: { value: null, source: 'unavailable' },
+        memoryMB: { value: null, source: 'unavailable' },
+      });
       this.endChildren(e.sessionId, 'Session parente perdue');
     }
   }
@@ -334,7 +459,10 @@ export class ClaudeProvider implements AgentProvider {
   private endChildren(sessionId: string, why: string) {
     for (const a of this.sink.allAgents()) {
       if (a.kind === 'subagent' && a.sessionId === sessionId && a.status !== 'done' && a.status !== 'lost') {
-        this.sink.events([{ id: `childend:${a.id}`, agentId: a.id, ts: Date.now(), kind: 'session_end', summary: why, source: 'registry', data: { provenance: 'inferred' } }], true);
+        this.sink.events(
+          [{ id: `childend:${a.id}`, agentId: a.id, ts: Date.now(), kind: 'session_end', summary: why, source: 'registry', data: { provenance: 'inferred' } }],
+          true,
+        );
       }
     }
   }
@@ -370,7 +498,7 @@ export class ClaudeProvider implements AgentProvider {
           await this.discoverFile(full, !initial);
         } else if (ent.isDirectory()) {
           const subDir = path.join(full, 'subagents');
-          let subs: string[] = [];
+          let subs: string[];
           try {
             subs = await fsp.readdir(subDir);
           } catch {
@@ -402,7 +530,15 @@ export class ClaudeProvider implements AgentProvider {
     if (path.basename(parent) === 'subagents') {
       const sessionId = path.basename(path.dirname(parent));
       const sub = base.replace(/^agent-/, '');
-      info = { file, sessionId, subagentId: sub, agentId: subAgentId(sessionId, sub), metaFile: path.join(parent, `${base}.meta.json`), registered: false, mtimeMs: Date.now() };
+      info = {
+        file,
+        sessionId,
+        subagentId: sub,
+        agentId: subAgentId(sessionId, sub),
+        metaFile: path.join(parent, `${base}.meta.json`),
+        registered: false,
+        mtimeMs: Date.now(),
+      };
     } else if (/^[0-9a-f-]{36}$/i.test(base) && path.dirname(parent) === this.projectsDir) {
       info = { file, sessionId: base, agentId: sessionAgentId(base), registered: false, mtimeMs: Date.now() };
     } else return;
@@ -440,14 +576,20 @@ export class ClaudeProvider implements AgentProvider {
       if (!existing) {
         await this.registerFromFile(info, meta);
       } else {
-        this.sink.patchAgent(id, { role: meta.agentType || existing.role, parentId: this.spawnByToolUse.get(info.toolUseId ?? '') ?? existing.parentId ?? parentId });
+        this.sink.patchAgent(id, {
+          role: meta.agentType || existing.role,
+          parentId: this.spawnByToolUse.get(info.toolUseId ?? '') ?? existing.parentId ?? parentId,
+        });
         if (meta.model) this.sink.patchAgent(id, { model: { value: String(meta.model), source: 'observed', note: 'Modèle demandé (meta.json)' } });
       }
       if (meta.finished && !info.metaFinished) {
         info.metaFinished = true;
         // read remaining transcript before marking done
         await this.readFile(info);
-        this.sink.events([{ id: `subdone:${id}`, agentId: id, ts: info.mtimeMs, kind: 'subagent_done', summary: 'Sous-agent terminé', source: 'transcript' }], Date.now() - info.mtimeMs < 120_000);
+        this.sink.events(
+          [{ id: `subdone:${id}`, agentId: id, ts: info.mtimeMs, kind: 'subagent_done', summary: 'Sous-agent terminé', source: 'transcript' }],
+          Date.now() - info.mtimeMs < 120_000,
+        );
       }
     } catch {
       /* meta not written yet */
@@ -589,14 +731,53 @@ export class ClaudeProvider implements AgentProvider {
         if (a.status === 'done' || a.status === 'lost') continue;
         // Every running session (interactive or -p) is listed in the registry, so an absent one has ended.
         if (now - a.lastEventAt > 30_000) {
-          this.sink.events([{ id: `hist-end:${a.id}:${a.lastEventAt}`, agentId: a.id, ts: a.lastEventAt, kind: 'session_end', summary: 'Session terminée (absente du registre, transcript inactif)', source: 'app', data: { provenance: 'inferred' } }], true);
+          this.sink.events(
+            [
+              {
+                id: `hist-end:${a.id}:${a.lastEventAt}`,
+                agentId: a.id,
+                ts: a.lastEventAt,
+                kind: 'session_end',
+                summary: 'Session terminée (absente du registre, transcript inactif)',
+                source: 'app',
+                data: { provenance: 'inferred' },
+              },
+            ],
+            true,
+          );
         } else {
-          this.sink.events([{ id: `hist-act:${a.id}:${a.lastEventAt}`, agentId: a.id, ts: now, kind: 'status_change', summary: 'Activité récente du transcript, session absente du registre (mode -p ?)', source: 'app', data: { status: 'working', provenance: 'inferred' } }], true);
+          this.sink.events(
+            [
+              {
+                id: `hist-act:${a.id}:${a.lastEventAt}`,
+                agentId: a.id,
+                ts: now,
+                kind: 'status_change',
+                summary: 'Activité récente du transcript, session absente du registre (mode -p ?)',
+                source: 'app',
+                data: { status: 'working', provenance: 'inferred' },
+              },
+            ],
+            true,
+          );
         }
       } else if (a.status !== 'done' && a.status !== 'lost') {
         const parentAlive = this.registry.has(a.sessionId) || this.managed.isRunning(a.sessionId);
         if (!parentAlive && now - a.lastEventAt > 2 * 60_000) {
-          this.sink.events([{ id: `hist-end:${a.id}:${a.lastEventAt}`, agentId: a.id, ts: a.lastEventAt, kind: 'session_end', summary: 'Sous-agent inactif, session parente terminée', source: 'app', data: { provenance: 'inferred' } }], true);
+          this.sink.events(
+            [
+              {
+                id: `hist-end:${a.id}:${a.lastEventAt}`,
+                agentId: a.id,
+                ts: a.lastEventAt,
+                kind: 'session_end',
+                summary: 'Sous-agent inactif, session parente terminée',
+                source: 'app',
+                data: { provenance: 'inferred' },
+              },
+            ],
+            true,
+          );
         }
       }
     }
@@ -613,7 +794,20 @@ export class ClaudeProvider implements AgentProvider {
         if (parentAlive && now - a.lastEventAt < 30 * 60_000) continue;
       }
       if (now - a.lastEventAt > STALE_SESSION_MS) {
-        this.sink.events([{ id: `stale:${a.id}:${a.lastEventAt}`, agentId: a.id, ts: now, kind: 'session_end', summary: `Aucune activité depuis ${Math.round((now - a.lastEventAt) / 60000)} min et processus non suivi : considéré terminé`, source: 'app', data: { provenance: 'inferred' } }], true);
+        this.sink.events(
+          [
+            {
+              id: `stale:${a.id}:${a.lastEventAt}`,
+              agentId: a.id,
+              ts: now,
+              kind: 'session_end',
+              summary: `Aucune activité depuis ${Math.round((now - a.lastEventAt) / 60000)} min et processus non suivi : considéré terminé`,
+              source: 'app',
+              data: { provenance: 'inferred' },
+            },
+          ],
+          true,
+        );
       }
     }
   }
@@ -637,11 +831,34 @@ export class ClaudeProvider implements AgentProvider {
       if (h.hook_event_name === 'Notification') {
         const msg = clean(h.message ?? '', 300);
         const waiting = /permission|waiting for your input|needs your/i.test(msg) || /permission|idle/.test(String(h.notification_type ?? ''));
-        evs.push({ id: `hook:${sid}:${t}:n`, agentId, ts: t, kind: 'notification', summary: msg || 'Notification Claude Code', source: 'hook', data: { waiting, type: h.notification_type } });
+        evs.push({
+          id: `hook:${sid}:${t}:n`,
+          agentId,
+          ts: t,
+          kind: 'notification',
+          summary: msg || 'Notification Claude Code',
+          source: 'hook',
+          data: { waiting, type: h.notification_type },
+        });
       } else if (h.hook_event_name === 'SessionEnd') {
-        evs.push({ id: `hook:${sid}:${t}:end`, agentId, ts: t, kind: 'session_end', summary: `Session terminée (${h.reason ?? 'raison inconnue'})`, source: 'hook', data: { provenance: 'observed' } });
+        evs.push({
+          id: `hook:${sid}:${t}:end`,
+          agentId,
+          ts: t,
+          kind: 'session_end',
+          summary: `Session terminée (${h.reason ?? 'raison inconnue'})`,
+          source: 'hook',
+          data: { provenance: 'observed' },
+        });
       } else if (h.hook_event_name === 'SessionStart') {
-        evs.push({ id: `hook:${sid}:${t}:start`, agentId, ts: t, kind: 'session_start', summary: `Session démarrée (${h.source ?? 'startup'})`, source: 'hook' });
+        evs.push({
+          id: `hook:${sid}:${t}:start`,
+          agentId,
+          ts: t,
+          kind: 'session_start',
+          summary: `Session démarrée (${h.source ?? 'startup'})`,
+          source: 'hook',
+        });
       }
     }
     if (evs.length) {
@@ -654,7 +871,11 @@ export class ClaudeProvider implements AgentProvider {
 
   /** Counters for the status bar. */
   health() {
-    return { watchedFiles: this.files.size, liveSessions: this.registry.size, managedRunning: this.managed.list().filter((p) => p.child.exitCode === null).length };
+    return {
+      watchedFiles: this.files.size,
+      liveSessions: this.registry.size,
+      managedRunning: this.managed.list().filter((p) => p.child.exitCode === null).length,
+    };
   }
 
   // ---------- control ----------
@@ -663,9 +884,22 @@ export class ClaudeProvider implements AgentProvider {
     const reasons: Record<string, string> = {
       pause: 'Claude Code n’offre pas de mise en pause. Utilisez « Interrompre » puis envoyez une instruction pour continuer.',
     };
-    const caps: ControlCapabilities = { sendInstruction: false, interrupt: false, pause: false, stop: false, resume: false, openTerminal: !!a.cwd, openFolder: !!a.cwd, reasons };
+    const caps: ControlCapabilities = {
+      sendInstruction: false,
+      interrupt: false,
+      pause: false,
+      stop: false,
+      resume: false,
+      openTerminal: !!a.cwd,
+      openFolder: !!a.cwd,
+      reasons,
+    };
     if (a.kind === 'subagent') {
-      reasons.sendInstruction = reasons.interrupt = reasons.stop = reasons.resume = 'Les sous-agents sont pilotés par leur agent parent : agissez sur la session parente.';
+      reasons.sendInstruction =
+        reasons.interrupt =
+        reasons.stop =
+        reasons.resume =
+          'Les sous-agents sont pilotés par leur agent parent : agissez sur la session parente.';
       return caps;
     }
     const running = this.managed.isRunning(a.sessionId);
@@ -692,7 +926,9 @@ export class ClaudeProvider implements AgentProvider {
     switch (action.type) {
       case 'send':
         if (!caps.sendInstruction) return { ok: false, message: caps.reasons.sendInstruction ?? 'Non disponible' };
-        return this.managed.send(a.sessionId, action.text) ? { ok: true, message: 'Instruction envoyée' } : { ok: false, message: 'Le processus ne répond plus' };
+        return this.managed.send(a.sessionId, action.text)
+          ? { ok: true, message: 'Instruction envoyée' }
+          : { ok: false, message: 'Le processus ne répond plus' };
       case 'interrupt':
         if (!caps.interrupt) return { ok: false, message: caps.reasons.interrupt ?? 'Non disponible' };
         return this.managed.interrupt(a.sessionId) ? { ok: true, message: 'Interruption envoyée' } : { ok: false, message: 'Le processus ne répond plus' };
@@ -742,7 +978,11 @@ export function openTerminal(cwd: string, cmd?: string[]): Promise<ControlResult
     const child = spawn('wt.exe', wtArgs, { detached: true, stdio: 'ignore', windowsHide: false });
     child.on('error', () => {
       // Windows Terminal absent: fall back to cmd.exe
-      const c2 = spawn('cmd.exe', ['/c', 'start', '""', '/D', cwd, 'cmd.exe', '/K', ...(cmd ?? [])], { detached: true, stdio: 'ignore', windowsVerbatimArguments: false });
+      const c2 = spawn('cmd.exe', ['/c', 'start', '""', '/D', cwd, 'cmd.exe', '/K', ...(cmd ?? [])], {
+        detached: true,
+        stdio: 'ignore',
+        windowsVerbatimArguments: false,
+      });
       c2.on('error', (e) => resolve({ ok: false, message: `Impossible d’ouvrir un terminal : ${e.message}` }));
       c2.on('spawn', () => resolve({ ok: true, message: 'Terminal ouvert (cmd)' }));
       c2.unref();

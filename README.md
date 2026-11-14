@@ -1,5 +1,7 @@
 # AI Agent Office
 
+[![CI](https://github.com/N4ole/ai-agent-office/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/N4ole/ai-agent-office/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/N4ole/ai-agent-office?sort=semver)](https://github.com/N4ole/ai-agent-office/releases/latest) [![License: MIT](https://img.shields.io/github/license/N4ole/ai-agent-office)](LICENSE)
+
 [![Télécharger Releases](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Releases-2da44e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/N4ole/ai-agent-office/releases) [![Docs Français](https://img.shields.io/badge/Docs-Fran%C3%A7ais-0969da?style=for-the-badge)](docs/fr/README.md) [![Docs English](https://img.shields.io/badge/Docs-English-8250df?style=for-the-badge)](docs/en/README.md) [![Licence MIT](https://img.shields.io/badge/Licence-MIT-57606a?style=for-the-badge)](LICENSE)
 
 Bureau virtuel en pixel art pour observer et piloter vos agents **Claude Code** en temps réel, sous Windows.

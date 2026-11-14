@@ -73,7 +73,10 @@ export function renderStreamMessage(o: any): string[] {
 export class ManagedSessions {
   private procs = new Map<string, ManagedProcess>();
 
-  constructor(private claudePath: () => string, private ev: ManagedEvents) {}
+  constructor(
+    private claudePath: () => string,
+    private ev: ManagedEvents,
+  ) {}
 
   bySession(sessionId: string): ManagedProcess | undefined {
     for (const p of this.procs.values()) if (p.sessionId === sessionId) return p;
@@ -99,7 +102,16 @@ export class ManagedSessions {
         resolve({ ok: false, message: `Impossible de lancer Claude Code : ${e?.message ?? e}` });
         return;
       }
-      const mp: ManagedProcess = { key, sessionId: opts.resumeSessionId ?? null, child, cwd: opts.cwd, opts, stopRequested: false, busy: false, startedAt: Date.now() };
+      const mp: ManagedProcess = {
+        key,
+        sessionId: opts.resumeSessionId ?? null,
+        child,
+        cwd: opts.cwd,
+        opts,
+        stopRequested: false,
+        busy: false,
+        startedAt: Date.now(),
+      };
       this.procs.set(key, mp);
       let settled = false;
       const settle = (r: { ok: boolean; message: string; sessionId?: string }) => {
@@ -164,7 +176,10 @@ export class ManagedSessions {
         settle({ ok: true, message: `Session ${opts.resumeSessionId} reprise : en attente d’une instruction`, sessionId: opts.resumeSessionId });
       }
       // Safety net: init normally arrives within a few seconds.
-      setTimeout(() => settle({ ok: mp.child.exitCode === null, message: mp.child.exitCode === null ? 'Lancé (en attente de la session)' : 'Échec du lancement' }), 30_000);
+      setTimeout(
+        () => settle({ ok: mp.child.exitCode === null, message: mp.child.exitCode === null ? 'Lancé (en attente de la session)' : 'Échec du lancement' }),
+        30_000,
+      );
     });
   }
 

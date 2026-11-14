@@ -142,10 +142,11 @@ function liveStatus(a: InternalAgent, ev: AgentEvent, s: AgentStatus, note?: str
 }
 
 function closeRunningTasks(a: InternalAgent, ts: number, status: 'done' | 'error') {
-  for (const t of a.tasks) if (t.status === 'running') {
-    t.status = status;
-    t.endedAt = ts;
-  }
+  for (const t of a.tasks)
+    if (t.status === 'running') {
+      t.status = status;
+      t.endedAt = ts;
+    }
 }
 
 /** Activity to show once no tool is pending. */
@@ -260,7 +261,10 @@ export function reduce(a: InternalAgent, ev: AgentEvent, live: boolean): Interna
     }
     case 'cost':
       if (typeof d.totalCostUSD === 'number') {
-        a.cost = observed(d.totalCostUSD, d.unknownModelCost ? 'Coût partiel : modèle au tarif inconnu de Claude Code' : 'Relevé cost-state écrit par Claude Code');
+        a.cost = observed(
+          d.totalCostUSD,
+          d.unknownModelCost ? 'Coût partiel : modèle au tarif inconnu de Claude Code' : 'Relevé cost-state écrit par Claude Code',
+        );
       }
       break;
     case 'title':
