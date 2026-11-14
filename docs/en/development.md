@@ -92,6 +92,8 @@ Useful to check rendering without touching your data. They are only honoured **i
 | `AAO_EXIT` | Quit after the last capture. |
 | `VITE_DEV_SERVER_URL` | UI URL during development (set by `npm run dev`). |
 
+`npm run screenshots` uses them to regenerate the README screenshots (`docs/images/*.png`) in demo mode, with a throw-away data folder and a fake `claude` that only answers `/usage`: your history and Claude Code sessions are never read. A window opens for about twenty seconds. Size: `SHOTS_SIZE=1920x1080`.
+
 ## Adding a connector
 
 A connector is a class implementing `AgentProvider` (`src/main/providers/provider.ts`):

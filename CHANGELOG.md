@@ -35,6 +35,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; versions : [
 
 - Intégration continue (lint, formatage, types, tests avec couverture, build), releases construites par GitHub
   Actions avec sommes SHA-256 et attestation de provenance.
+- Captures d’écran dans le README (`npm run screenshots`), section Dépannage, prérequis explicites (interface en
+  français, version de Claude Code testée, mode d’installation, sondage `/usage`), documentation de la grille
+  tarifaire.
 - L’installeur s’appelle désormais `AI-Agent-Office-Setup-<version>.exe` (sans espaces, pour que le nom publié sur
   GitHub corresponde à `SHA256SUMS.txt`).
 

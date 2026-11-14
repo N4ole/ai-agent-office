@@ -18,6 +18,7 @@ chaque information affichée vient d'un événement réel ou d'une déduction cl
 | [Utilisation](utilisation.md) | Interface, observer des agents, piloter des sessions, notifications, paramètres, raccourcis, dépannage |
 | [Fonctionnement](fonctionnement.md) | Architecture, sources de données, machine d'états, confidentialité, stockage |
 | [Développement](developpement.md) | Structure du code, commandes, tests, ajouter un connecteur, publier une version |
+| [Grille tarifaire](tarifs.md) | Date et source des prix utilisés pour le coût estimé, comment les mettre à jour |
 
 ## En bref
 

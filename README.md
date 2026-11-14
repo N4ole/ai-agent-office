@@ -8,6 +8,35 @@ Bureau virtuel en pixel art pour observer et piloter vos agents **Claude Code** 
 Chaque personnage est une vraie session ou un vrai sous-agent Claude Code ; chaque statut vient d’un événement réel
 ou d’une déduction signalée comme telle.
 
+![Le bureau en mode démo : agents à leur poste et fiche de l’agent sélectionné](docs/images/office-agent.png)
+
+<details>
+<summary>Autres captures (tableau de bord, journaux)</summary>
+
+![Tableau de bord en mode démo](docs/images/dashboard.png)
+![Journaux en mode démo](docs/images/logs.png)
+
+</details>
+
+*Captures du mode démo (agents fictifs), régénérées par `npm run screenshots`.*
+
+## À savoir avant d’installer
+
+- **Interface uniquement en français.** La documentation existe en français et en anglais, mais l’application
+  elle-même (menus, messages, dates) n’est pas traduite. *The app UI is French only.*
+- **Windows 10/11 uniquement.**
+- **Claude Code est requis** : l’app observe les sessions de la CLI Claude Code, elle ne remplace pas Claude Code et
+  n’appelle aucun modèle elle-même. Aucun appel réseau n’est fait par l’app.
+- **Version testée** : formats de fichiers vérifiés sur Claude Code **2.1.312** (texte de `/usage` : 2.1.314).
+  Les versions 2.1.x suivantes devraient fonctionner ; un format inconnu est ignoré sans planter.
+- **Mode d’installation de Claude Code** : l’installeur natif (`claude.exe`) est le mode testé. L’installation
+  via npm (`claude.cmd`) est prise en charge depuis la version qui suit la 1.3.1, **sans avoir encore été vérifiée sur
+  une vraie installation npm** : signalez tout problème.
+- **Sondage des quotas** : pour afficher les quotas d’abonnement, l’app lance en arrière-plan un processus `claude`
+  (commande `/usage`, sans session enregistrée) **toutes les 5 minutes** par défaut. Réglable, ou désactivable (0)
+  dans Paramètres → Notifications & seuils.
+- Exécutables **non signés** : voir [vérifier un téléchargement](docs/fr/installation.md#vérifier-un-téléchargement).
+
 ## Documentation
 
 | | Français | English |
@@ -17,6 +46,9 @@ ou d’une déduction signalée comme telle.
 | Utilisation / Usage | [Utilisation](docs/fr/utilisation.md) | [Usage](docs/en/usage.md) |
 | Fonctionnement / How it works | [Fonctionnement](docs/fr/fonctionnement.md) | [How it works](docs/en/how-it-works.md) |
 | Développement / Development | [Développement](docs/fr/developpement.md) | [Development](docs/en/development.md) |
+| Grille tarifaire / Price table | [Tarifs](docs/fr/tarifs.md) | [Pricing](docs/en/pricing.md) |
+| Historique / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.md](CHANGELOG.md) |
+| Contribuer / Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) · [Sécurité](SECURITY.md) | [CONTRIBUTING.md](CONTRIBUTING.md) · [Security](SECURITY.md) |
 
 ## Lancer l’application
 
@@ -105,16 +137,57 @@ Raccourcis : `1…5` vues · `Ctrl+K` recherche · `Ctrl+N` nouvelle session · 
 - Format de fichiers vérifié sur Claude Code 2.1.x ; les enregistrements inconnus sont ignorés.
 - Les quotas viennent du texte affiché par `/usage` : si une future version de Claude Code change ce texte, le widget
   affiche « Format de /usage non reconnu » (et garde les dernières valeurs) au lieu d’inventer un chiffre.
+- Le coût estimé repose sur une grille tarifaire datée ([date, source et mise à jour](docs/fr/tarifs.md)).
+
+## Dépannage
+
+### Le quota affiche « Format de /usage non reconnu », « Réponse de /usage vide » ou une erreur `ENOENT`
+
+- `ENOENT` / « introuvable » : Claude Code n’est pas trouvé. Vérifiez `claude --version` dans un terminal, ou
+  indiquez le chemin complet de `claude.exe` (ou `claude.cmd` pour une installation npm) dans Paramètres → Connexion à Claude Code.
+- « non reconnu » : votre version de Claude Code affiche `/usage` autrement que la 2.1.314. Les dernières valeurs
+  connues restent affichées ; ouvrez une issue avec la sortie de `claude -p "/usage"` (en masquant ce qui est privé).
+- Avec une **clé API** (et non un abonnement claude.ai), il n’y a pas de quota : rien n’est affiché, c’est normal.
+- « Pas de réponse dans le délai » : Claude Code a mis plus de 30 s à répondre (premier lancement, mise à jour) ;
+  cliquez sur Actualiser un peu plus tard.
+
+### Les alertes « en attente d’autorisation » n’arrivent pas (hooks inactifs)
+
+- Les hooks sont optionnels : Paramètres → Hooks optionnels → Installer les hooks. Ils ne s’appliquent qu’aux sessions
+  Claude Code **démarrées après** l’installation.
+- Ils nécessitent **Node.js** dans le `PATH` (la vérification « Node.js » de l’assistant doit être verte).
+- Vérifiez que `~/.claude/settings.json` contient des entrées `ai-agent-office` (une sauvegarde horodatée
+  `settings.json.ai-agent-office-<date>.bak` est faite à chaque modification).
+- Si l’app signale un « mode dégradé », le dossier `%USERPROFILE%\.ai-agent-office` n’est pas accessible en
+  écriture : corrigez ses droits puis relancez l’app.
+
+### Node.js absent
+
+- Tout fonctionne sans Node.js sauf les hooks optionnels. Pour les activer, installez Node.js LTS depuis
+  [nodejs.org](https://nodejs.org), redémarrez l’app puis réinstallez les hooks.
+
+### Antivirus ou SmartScreen bloque l’exécutable
+
+- SmartScreen : « Informations complémentaires » → « Exécuter quand même » (exécutables non signés).
+- Avant d’ajouter une exception, [vérifiez l’empreinte SHA-256 et la provenance](docs/fr/installation.md#vérifier-un-téléchargement)
+  du fichier.
+- La version **portable** se décompresse à chaque lancement et déclenche plus souvent les antivirus : préférez
+  l’installateur, ou construisez l’app vous-même (`npm run dist`).
+
+Autres cas : [Utilisation → Dépannage](docs/fr/utilisation.md).
 
 ## Développement
 
 ```bash
-npm install            # si npm bloque les scripts : node node_modules/electron/install.js
+npm ci                 # si npm bloque les scripts : node node_modules/electron/install.js
 npm run dev            # Vite + Electron
-npm test               # 64 tests
-npm run dist           # installateur + portable dans release/
-npm run dist:portable  # portable seul
+npm test               # tests (vitest)
+npm run lint:setup && npm run lint
+npm run screenshots    # régénère docs/images/*.png (mode démo, ouvre une fenêtre ~20 s)
+npm run dist           # installateur + portable dans release/ (essai local ; les releases sont faites par la CI)
 ```
+
+Voir [CONTRIBUTING.md](CONTRIBUTING.md).
 
 `src/main/` : connecteur Claude Code, état des agents, base SQLite, notifications ·
 `src/renderer/` : interface React et moteur pixel art (`office/`).
