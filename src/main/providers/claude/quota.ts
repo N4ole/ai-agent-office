@@ -100,6 +100,8 @@ export class QuotaMonitor {
   private state: QuotaState | null = null;
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<QuotaState> | null = null;
+  /** Set when the probe folder cannot be created: no probe is ever started. */
+  readonly disabled: string | null = null;
 
   private opts: Required<QuotaMonitorOptions>;
 
@@ -114,7 +116,12 @@ export class QuotaMonitor {
       killTree: opts.killTree ?? killTree,
       command: opts.command ?? ((args) => ({ file: this.claudePath(), args })),
     };
-    mkdirSync(cwd, { recursive: true });
+    try {
+      mkdirSync(cwd, { recursive: true });
+    } catch (e: any) {
+      // Folder unusable (R-22): the app keeps running, quotas are simply unavailable.
+      this.disabled = `Quota désactivé : dossier ${cwd} inaccessible (${e?.code ?? e?.message ?? e})`;
+    }
   }
 
   get(): QuotaState | null {
@@ -155,6 +162,11 @@ export class QuotaMonitor {
 
   refresh(): Promise<QuotaState> {
     if (this.running) return this.running;
+    if (this.disabled) {
+      const q: QuotaState = { plan: 'unknown', windows: this.state?.windows ?? [], fetchedAt: Date.now(), source: 'usage-command', error: this.disabled };
+      this.publish(q);
+      return Promise.resolve(q);
+    }
     this.running = new Promise<QuotaState>((resolve) => {
       const done = (q: QuotaState) => {
         this.running = null;

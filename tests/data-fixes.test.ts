@@ -11,6 +11,7 @@ import { killTree } from '../src/main/providers/claude/managed';
 import { AgentManager, DESK_RELEASE_MS, type ManagerOutput } from '../src/main/core/agentManager';
 import { mergeSettings } from '../src/main/core/settings';
 import { appendHookLine } from '../src/main/core/hookLog';
+import { prepareOfficeHome } from '../src/main/core/officeHome';
 import type { AgentEvent } from '../src/shared/types';
 
 const usage = (id: string, ts: number, output: number): AgentEvent => ({
@@ -185,6 +186,38 @@ describe('long-running memory and disk use (R-16)', () => {
       expect(db2.getOffset(kept)).toBe(3);
       expect(db2.getOffset(path.join(dir, 'gone.jsonl'))).toBeUndefined();
       db2.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('read-only ~/.ai-agent-office (R-22)', () => {
+  it('detects an unusable folder and keeps the quota monitor alive without probing', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'aao-ro-'));
+    try {
+      const blocker = path.join(dir, 'not-a-folder');
+      writeFileSync(blocker, 'x'); // a file where the folder should be: mkdir fails like a read-only profile
+      const home = path.join(blocker, '.ai-agent-office');
+      const r = prepareOfficeHome(home);
+      expect(r.ok).toBe(false);
+      let spawned = 0;
+      const states: string[] = [];
+      const q = new QuotaMonitor(
+        () => 'claude',
+        path.join(home, 'quota'),
+        (s) => void states.push(s.error ?? ''),
+        {
+          command: (args) => {
+            spawned++;
+            return { file: 'claude', args };
+          },
+        },
+      );
+      const s = await q.refresh();
+      expect(spawned).toBe(0);
+      expect(s.error).toMatch(/désactivé/);
+      expect(prepareOfficeHome(path.join(dir, 'ok')).ok).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
