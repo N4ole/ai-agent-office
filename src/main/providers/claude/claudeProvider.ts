@@ -18,6 +18,7 @@ import { JsonlTailer } from './tailer';
 import { parseLines } from './parser';
 import { ManagedSessions, killTree } from './managed';
 import { clean, firstLine } from '../../core/redact';
+import { checkKillTarget, queryProcess, type ProcessInfo } from '../../core/processCheck';
 
 export interface OffsetStore {
   getOffset(file: string): number | undefined;
@@ -33,6 +34,10 @@ export interface ClaudeProviderOptions {
   /** Folders whose Claude Code processes are the app's own helpers (quota checks): never shown as agents. */
   ignoreCwds?: () => string[];
   onRateLimit?: (info: unknown) => void;
+  /** Process lookup used before a forced stop (default: CIM query). Injectable for tests. */
+  processInfo?: (pid: number) => Promise<ProcessInfo | null>;
+  /** Process-tree kill (default: taskkill /T /F). Injectable for tests. */
+  killTree?: (pid: number | undefined) => void;
 }
 
 interface RegistryEntry {
@@ -939,9 +944,14 @@ export class ClaudeProvider implements AgentProvider {
           return { ok: true, message: 'Arrêt demandé' };
         }
         if (a.pid.value) {
+          // The PID was read from a file: make sure it still is this Claude Code session (R-04).
+          const pid = a.pid.value;
+          const info = await (this.o.processInfo ?? queryProcess)(pid);
+          const check = checkKillTarget(info, this.registry.get(a.sessionId)?.startedAt);
+          if (!check.ok) return { ok: false, message: `Arrêt refusé : ${check.reason}.` };
           this.lostReported.add(a.sessionId); // expected disappearance, not a crash
-          killTree(a.pid.value);
-          return { ok: true, message: `Processus ${a.pid.value} arrêté` };
+          (this.o.killTree ?? killTree)(pid);
+          return { ok: true, message: `Processus ${pid} arrêté` };
         }
         return { ok: false, message: 'PID inconnu' };
       case 'resume':
