@@ -57,7 +57,7 @@ async function readSettings(file: string): Promise<Json> {
     return JSON.parse(await fsp.readFile(file, 'utf8'));
   } catch (e: any) {
     if (e?.code === 'ENOENT') return {};
-    throw new Error(`settings.json illisible (${e?.message}) : opération annulée pour ne rien écraser`);
+    throw new Error(`settings.json illisible (${e?.message}) : opération annulée pour ne rien écraser`, { cause: e });
   }
 }
 

@@ -304,7 +304,7 @@ export class ClaudeProvider implements AgentProvider {
   // ---------- registry ----------
 
   async pollRegistry(): Promise<void> {
-    let names: string[] = [];
+    let names: string[];
     try {
       names = (await fsp.readdir(this.sessionsDir)).filter((n) => n.endsWith('.json'));
     } catch {
@@ -498,7 +498,7 @@ export class ClaudeProvider implements AgentProvider {
           await this.discoverFile(full, !initial);
         } else if (ent.isDirectory()) {
           const subDir = path.join(full, 'subagents');
-          let subs: string[] = [];
+          let subs: string[];
           try {
             subs = await fsp.readdir(subDir);
           } catch {

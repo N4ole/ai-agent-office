@@ -1,14 +1,14 @@
 // Masks secrets before anything is displayed, stored or exported.
 
 const BUILTIN: RegExp[] = [
-  /sk-ant-[A-Za-z0-9_\-]{10,}/g, // Anthropic keys
-  /\bsk-[A-Za-z0-9_\-]{20,}/g, // OpenAI-style keys
+  /sk-ant-[A-Za-z0-9_-]{10,}/g, // Anthropic keys
+  /\bsk-[A-Za-z0-9_-]{20,}/g, // OpenAI-style keys
   /\bAKIA[0-9A-Z]{16}\b/g, // AWS access key id
   /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b/g, // GitHub tokens
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
   /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g, // Slack
-  /\bAIza[0-9A-Za-z_\-]{30,}\b/g, // Google API key
-  /\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b/g, // JWT
+  /\bAIza[0-9A-Za-z_-]{30,}\b/g, // Google API key
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, // JWT
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
 ];
 
