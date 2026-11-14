@@ -1,0 +1,135 @@
+name: Release
+
+# Builds the Windows executables from the tagged commit, publishes their SHA-256 sums and a
+# build-provenance attestation, then creates the GitHub Release.
+# Trigger: push a tag vX.Y.Z whose version equals package.json "version".
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows executables
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # OIDC token for the provenance attestation
+      attestations: write
+    env:
+      # electron-builder downloads its own Electron; the npm postinstall copy is not needed.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js (version from package.json engines)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - name: Check that the tag matches package.json version
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version} (expected v${version})."
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Package (NSIS installer + portable)
+        # --publish never: the release is created by the next job, not by electron-builder.
+        run: npx electron-builder --win --publish never
+        env:
+          # Code signing is not configured (budget decision pending). To enable it later, provide
+          # the certificate through repository secrets and uncomment, e.g.:
+          #   CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_P12_BASE64 }}
+          #   CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # or configure Azure Trusted Signing in package.json "build.win.azureSignOptions".
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Collect artifacts and SHA-256 sums
+        shell: bash
+        run: |
+          mkdir -p out
+          cp "release/AI-Agent-Office-Setup-${VERSION}.exe" "release/AI-Agent-Office-${VERSION}-portable.exe" out/
+          cd out
+          sha256sum -- *.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          {
+            echo '## SHA-256'
+            echo '```'
+            cat SHA256SUMS.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: out/*.exe
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release and upload its assets
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: out
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > notes.md <<'EOF'
+          **Exécutables non signés** : Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » → « Informations complémentaires » → « Exécuter quand même ».
+
+          Vérifier un téléchargement (PowerShell) : `Get-FileHash .\<fichier>.exe -Algorithm SHA256`, à comparer avec `SHA256SUMS.txt`.
+          Vérifier sa provenance (GitHub CLI) : `gh attestation verify .\<fichier>.exe --repo ${{ github.repository }}`.
+
+          Détails des changements : voir `CHANGELOG.md`.
+          EOF
+          gh release create "$TAG" out/*.exe out/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "AI Agent Office ${TAG#v}" \
+            --notes-file notes.md \
+            --generate-notes

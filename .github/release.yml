@@ -1,0 +1,25 @@
+# Categories of the automatically generated release notes (gh release create --generate-notes).
+# Labels are created by the repository setup (see CONTRIBUTING.md) and applied by the labeler workflow.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: Sécurité
+      labels:
+        - security
+    - title: Corrections de bugs
+      labels:
+        - bug
+    - title: Améliorations
+      labels:
+        - enhancement
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Dépendances
+      labels:
+        - dependencies
+    - title: Autres changements
+      labels:
+        - '*'

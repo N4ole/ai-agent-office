@@ -53,6 +53,7 @@
       "artifactName": "AI-Agent-Office-${version}-portable.exe"
     },
     "nsis": {
+      "artifactName": "AI-Agent-Office-Setup-${version}.exe",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
