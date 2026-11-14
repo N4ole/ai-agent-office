@@ -137,8 +137,8 @@ Releases.
 
 ## Contribuer
 
-Les issues et pull requests sont les bienvenues. Avant d'ouvrir une pull request : `npm run typecheck` et `npm test`
-doivent passer. Le projet est distribué sous [licence MIT](../../LICENSE).
+Les issues et pull requests sont les bienvenues : voir [CONTRIBUTING.md](../../CONTRIBUTING.md) (installation, scripts,
+conventions de commit, tests) et le [code de conduite](../../CODE_OF_CONDUCT.md). Le projet est distribué sous [licence MIT](../../LICENSE).
 
 ---
 
