@@ -19,7 +19,7 @@ import { parseLines } from './parser';
 import { ManagedSessions, killTree } from './managed';
 import { clean, firstLine } from '../../core/redact';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../../core/processCheck';
-import { cmdWindowSpec, wtSpec } from '../../core/winCommand';
+import { cmdWindowSpec, resolveProgram, wtSpec } from '../../core/winCommand';
 
 export interface OffsetStore {
   getOffset(file: string): number | undefined;
@@ -962,7 +962,7 @@ export class ClaudeProvider implements AgentProvider {
         return openTerminal(a.cwd);
       case 'resumeInTerminal':
         if (a.alive.value === true) return { ok: false, message: 'La session tourne déjà ; ouvrez plutôt un terminal dans son dossier.' };
-        return openTerminal(a.cwd, [this.o.claudePath(), '--resume', a.sessionId]);
+        return openTerminal(a.cwd, [resolveProgram(this.o.claudePath()), '--resume', a.sessionId]);
       case 'openFolder':
         return { ok: true, message: a.cwd }; // handled by the main process (shell.openPath)
     }

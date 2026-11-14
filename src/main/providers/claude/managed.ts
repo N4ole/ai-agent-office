@@ -12,6 +12,7 @@ import type { LaunchOptions } from '../../../shared/types';
 import type { ConsoleLine } from '../provider';
 import { clean, firstLine } from '../../core/redact';
 import { summarizeTool } from './parser';
+import { claudeSpawn } from '../../core/winCommand';
 
 export interface ManagedEvents {
   onSession(sessionId: string, proc: ManagedProcess): void;
@@ -97,7 +98,9 @@ export class ManagedSessions {
     return new Promise((resolve) => {
       let child: ChildProcessWithoutNullStreams;
       try {
-        child = spawn(this.claudePath(), buildArgs(opts), { cwd: opts.cwd, windowsHide: true, env: process.env });
+        // claude.exe (native installer) or claude.cmd (npm) — the latter needs cmd.exe (R-03).
+        const spec = claudeSpawn(this.claudePath(), buildArgs(opts));
+        child = spawn(spec.file, spec.args, { cwd: opts.cwd, windowsHide: true, env: process.env, windowsVerbatimArguments: spec.windowsVerbatimArguments });
       } catch (e: any) {
         resolve({ ok: false, message: `Impossible de lancer Claude Code : ${e?.message ?? e}` });
         return;

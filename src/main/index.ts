@@ -22,6 +22,7 @@ import { exportToFile } from './db/export';
 import { prepareOfficeHome } from './core/officeHome';
 import { devHelpers } from './core/devHelpers';
 import { validateSettingsPatch } from './core/settingsValidation';
+import { claudeSpawn, type SpawnSpec } from './core/winCommand';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -329,9 +330,16 @@ async function shutdown() {
 
 app.on('window-all-closed', () => app.quit());
 
-function checkCmd(cmd: string, args: string[]): Promise<{ ok: boolean; out: string }> {
+/** Runs a command; with `viaResolver`, the program is resolved like Claude Code (.exe or npm .cmd shim, R-03). */
+function checkCmd(cmd: string, args: string[], viaResolver = false): Promise<{ ok: boolean; out: string }> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { windowsHide: true, timeout: 15000 }, (err, stdout, stderr) =>
+    let spec: SpawnSpec;
+    try {
+      spec = viaResolver ? claudeSpawn(cmd, args) : { file: cmd, args };
+    } catch (e: any) {
+      return resolve({ ok: false, out: e?.message ?? String(e) });
+    }
+    execFile(spec.file, spec.args, { windowsHide: true, timeout: 15000, windowsVerbatimArguments: spec.windowsVerbatimArguments }, (err, stdout, stderr) =>
       resolve({ ok: !err, out: (stdout || stderr || err?.message || '').trim() }),
     );
   });
@@ -339,7 +347,7 @@ function checkCmd(cmd: string, args: string[]): Promise<{ ok: boolean; out: stri
 
 async function setupChecks(): Promise<SetupCheck[]> {
   const checks: SetupCheck[] = [];
-  const c = await checkCmd(settings.claudePath || 'claude', ['--version']);
+  const c = await checkCmd(settings.claudePath || 'claude', ['--version'], true);
   checks.push({
     id: 'claude',
     label: 'Claude Code CLI',
