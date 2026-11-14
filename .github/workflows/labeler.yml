@@ -1,0 +1,23 @@
+name: Labeler
+
+# Labels pull requests from the files they change (rules in .github/labeler.yml).
+# pull_request_target is required to label PRs from forks; this workflow never checks out
+# or runs the PR's code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label by changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          sync-labels: false

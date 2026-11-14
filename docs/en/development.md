@@ -135,8 +135,8 @@ Releases.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a pull request, `npm run typecheck` and `npm test` must pass. The
-project is distributed under the [MIT license](../../LICENSE).
+Issues and pull requests are welcome: see [CONTRIBUTING.md](../../CONTRIBUTING.md) (setup, scripts, commit conventions,
+tests, written in French) and the [code of conduct](../../CODE_OF_CONDUCT.md). The project is distributed under the [MIT license](../../LICENSE).
 
 ---
 

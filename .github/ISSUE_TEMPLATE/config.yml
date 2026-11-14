@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Signaler une faille de sécurité (privé)
+    url: https://github.com/N4ole/ai-agent-office/security/advisories/new
+    about: Les vulnérabilités ne doivent pas être signalées dans une issue publique.
+  - name: Problème de Claude Code lui-même
+    url: https://github.com/anthropics/claude-code/issues
+    about: AI Agent Office ne fait qu’observer Claude Code ; les bugs de la CLI se signalent chez Anthropic.

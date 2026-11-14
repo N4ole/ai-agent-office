@@ -1,0 +1,30 @@
+name: Proposer une fonction
+description: Une idée d’amélioration pour AI Agent Office.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quel besoin ?
+      description: Le problème que vous rencontrez, ou ce que vous aimeriez pouvoir faire.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+      description: Ce que l’app pourrait faire. Une maquette ou une capture aide beaucoup.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Contraintes du projet
+      description: AI Agent Office observe Claude Code sans le modifier et ne fait aucun appel réseau.
+      options:
+        - label: Ma proposition est compatible avec ces contraintes (ou j’explique pourquoi elle ne l’est pas).
+          required: true

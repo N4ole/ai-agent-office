@@ -1,0 +1,84 @@
+name: Signaler un bug
+description: Quelque chose ne fonctionne pas comme prévu.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci ! Avant de valider, **retirez toute donnée sensible** (chemins clients, prompts, clés) des journaux.
+        Une faille de sécurité ? Utilisez le [signalement privé](https://github.com/N4ole/ai-agent-office/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: Que s’est-il passé ?
+      description: Ce que vous avez fait, ce que vous attendiez, ce qui s’est produit.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Lancer une session Claude Code dans…
+        2. Dans l’app, cliquer sur…
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Version d’AI Agent Office
+      description: Titre de la fenêtre ou nom du fichier téléchargé.
+      placeholder: 1.3.1
+    validations:
+      required: true
+  - type: dropdown
+    id: app-flavor
+    attributes:
+      label: Type d’exécutable
+      options:
+        - Installateur
+        - Portable
+        - Depuis les sources (npm run dev / npm start)
+    validations:
+      required: true
+  - type: input
+    id: claude-version
+    attributes:
+      label: Version de Claude Code
+      description: Résultat de `claude --version`.
+      placeholder: 2.1.312 (Claude Code)
+    validations:
+      required: true
+  - type: dropdown
+    id: claude-install
+    attributes:
+      label: Installation de Claude Code
+      options:
+        - Installateur natif (claude.exe)
+        - npm (npm i -g @anthropic-ai/claude-code)
+        - Je ne sais pas
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Version de Windows
+      description: 'Paramètres → Système → Informations système, ou `winver`.'
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journaux
+      description: Onglet Journal de l’app (journal de l’application), ou capture d’écran. Masquez les données sensibles.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vérifications
+      options:
+        - label: J’ai regardé la section Dépannage du README.
+          required: true
+        - label: J’ai retiré les données sensibles des journaux et captures.
+          required: true
