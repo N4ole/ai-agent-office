@@ -5,6 +5,7 @@ import { select, useStore } from '../store';
 import { EventLog } from '../components/EventLog';
 import { Avatar, Empty, Prov, StatusPill, ago, chatCost, fmtNum, fmtUSD, useNow } from '../ui';
 import { modelLabel } from '../../shared/pricing';
+import { localDay } from '../../shared/dates';
 import { QuotaBar, QuotaDetails } from '../components/QuotaWidget';
 import { ACTIVITY_LABEL } from '../../main/core/activity';
 import { STATUS_COLORS } from '../office/engine';
@@ -55,7 +56,10 @@ export function Dashboard({ agents }: { agents: UIAgent[] }) {
   const maxU = Math.max(1, ...usage.map((u) => u.output));
   // Always the last 14 days, including days without activity (empty bar).
   const days14 = Array.from({ length: 14 }, (_, i) => {
-    const day = new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10);
+    const d = new Date();
+    d.setHours(12, 0, 0, 0); // midday: immune to DST shifts
+    d.setDate(d.getDate() - (13 - i));
+    const day = localDay(d.getTime());
     return usage.find((u) => u.day === day) ?? { day, input: 0, output: 0 };
   });
   // Cost per chat: each session plus its sub-agents, estimated from tokens × model price.

@@ -6,6 +6,7 @@ import { promises as fsp, existsSync, readFileSync, renameSync, writeFileSync } 
 import path from 'node:path';
 import type { AgentEvent, AppNotification } from '../../shared/types';
 import type { InternalAgent } from '../core/reducer';
+import { localDay } from '../../shared/dates';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS agents (
@@ -262,7 +263,7 @@ export class OfficeDB {
     const rows = this.all<{ ts: number; data: string }>("SELECT ts, data FROM events WHERE kind = 'usage' AND ts >= ?", [since]);
     const m = new Map<string, { input: number; output: number }>();
     for (const r of rows) {
-      const day = new Date(r.ts).toISOString().slice(0, 10);
+      const day = localDay(r.ts);
       let d: any = {};
       try {
         d = JSON.parse(r.data);
