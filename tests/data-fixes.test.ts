@@ -1,7 +1,7 @@
 // Data and robustness fixes from the 2026-11-14 audit (R-06, R-07, R-14, R-15, R-16).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OfficeDB } from '../src/main/db/database';
@@ -66,6 +66,34 @@ describe('full JSON export (R-07)', () => {
       expect(out.events[0].ts).toBeGreaterThanOrEqual(out.events[6000].ts); // newest first, as before
       expect(Array.isArray(out.agents)).toBe(true);
       expect(Array.isArray(out.notifications)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('database flush (R-14)', () => {
+  it('keeps changes pending and logs when the write fails, then saves them later', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'aao-flush-'));
+    try {
+      const file = path.join(dir, 'office.db');
+      const errors: string[] = [];
+      const db = new OfficeDB(file);
+      db.onError = (m) => void errors.push(m);
+      await db.open();
+      db.setSetting('k', 1);
+      mkdirSync(`${file}.tmp`); // the temporary file cannot be written: simulates a locked/full disk
+      await expect(db.flush()).resolves.toBeUndefined();
+      expect(db.hasUnsavedChanges).toBe(true);
+      expect(errors).toHaveLength(1);
+      rmSync(`${file}.tmp`, { recursive: true });
+      await db.flush();
+      expect(db.hasUnsavedChanges).toBe(false);
+      db.close();
+      const db2 = new OfficeDB(file);
+      await db2.open();
+      expect(db2.getSetting('k')).toBe(1);
+      db2.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -103,6 +103,7 @@ async function main() {
   nativeTheme.themeSource = 'dark';
   await fsp.mkdir(OFFICE_HOME, { recursive: true });
   db = new OfficeDB(path.join(app.getPath('userData'), 'office.db'));
+  db.onError = (m) => (manager ? manager.log('error', m) : console.error(`[office] ${m}`));
   await db.open(wasmPath());
   settings = mergeSettings(db.getSetting<Partial<Settings>>('settings'));
   setCustomRedactions(settings.redactPatterns);

@@ -61,6 +61,9 @@ export class OfficeDB {
   private saving = false;
   /** Events older than this (epoch ms) are never stored again: set by an explicit purge (R-01). */
   private cutoff = 0;
+  private failing = false;
+  /** Receives write failures (and the recovery message); wired to the app log by the main process. */
+  onError?: (message: string) => void;
 
   /** `file` = null keeps everything in memory (tests). */
   constructor(private file: string | null) {}
@@ -123,6 +126,15 @@ export class OfficeDB {
     }, 3000);
   }
 
+  /** True while changes made in memory are not yet on disk. */
+  get hasUnsavedChanges(): boolean {
+    return this.dirty;
+  }
+
+  /**
+   * Writes the database to disk. Never rejects: if the write fails (disk full, file locked by an
+   * antivirus...), the changes stay pending, the error is reported once and a retry is scheduled (R-14).
+   */
   async flush(): Promise<void> {
     if (!this.file || !this.dirty || this.saving) return;
     this.saving = true;
@@ -133,9 +145,16 @@ export class OfficeDB {
       await fsp.mkdir(path.dirname(this.file), { recursive: true });
       await fsp.writeFile(tmp, data);
       await fsp.rename(tmp, this.file);
+      if (this.failing) this.onError?.('Base de données de nouveau enregistrée sur le disque');
+      this.failing = false;
+    } catch (e: any) {
+      this.dirty = true;
+      if (!this.failing) this.onError?.(`Impossible d’enregistrer la base de données (${e?.code ?? e?.message ?? e}) : nouvel essai automatique`);
+      this.failing = true;
     } finally {
       this.saving = false;
     }
+    if (this.dirty && this.failing) this.markDirty();
   }
 
   /** Synchronous flush used on application exit. */
