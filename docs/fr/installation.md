@@ -15,8 +15,8 @@
 
 1. Ouvrez la page [Releases](https://github.com/N4ole/ai-agent-office/releases) et choisissez la version la plus récente.
 2. Téléchargez l'un des deux fichiers :
-   - **`AI Agent Office Setup <version>.exe`** : installateur avec raccourci sur le bureau et désinstallation propre.
-     Le dossier d'installation est modifiable.
+   - **`AI-Agent-Office-Setup-<version>.exe`** : installateur avec raccourci sur le bureau et désinstallation propre.
+     Le dossier d'installation est modifiable. (Jusqu’à la 1.3.1 : `AI.Agent.Office.Setup.<version>.exe`.)
    - **`AI-Agent-Office-<version>-portable.exe`** : fichier unique, sans installation. Il se décompresse à chaque
      lancement, ce qui demande quelques secondes.
 3. Lancez le fichier.
@@ -26,6 +26,34 @@
 Les exécutables ne sont **pas signés**. Windows SmartScreen affichera donc « Windows a protégé votre ordinateur » :
 cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**. Si vous préférez ne pas exécuter un
 binaire téléchargé, construisez l'application vous-même (section suivante).
+
+Pourquoi pas de signature ? Un certificat de signature de code Windows (OV/EV ou Azure Trusted Signing) a un coût
+annuel ; il n’est pas en place pour l’instant. À défaut, chaque release fournit de quoi vérifier ce que vous
+téléchargez (section suivante). Certains antivirus peuvent aussi signaler la version portable, qui se décompresse à
+chaque lancement : préférez alors l’installateur.
+
+### Vérifier un téléchargement
+
+Depuis la version suivant la 1.3.1, les exécutables sont construits par GitHub Actions à partir du commit taggé
+([workflow `release.yml`](../../.github/workflows/release.yml)), et chaque release contient `SHA256SUMS.txt`.
+
+1. **Empreinte SHA-256** (PowerShell, dans le dossier de téléchargement) :
+
+   ```powershell
+   Get-FileHash .\AI-Agent-Office-Setup-<version>.exe -Algorithm SHA256
+   ```
+
+   La valeur doit être identique (sans tenir compte de la casse) à celle de `SHA256SUMS.txt`.
+
+2. **Provenance** (prouve que le fichier a été produit par le workflow de ce dépôt, à partir de quel commit) — avec
+   la [CLI GitHub](https://cli.github.com/) :
+
+   ```powershell
+   gh attestation verify .\AI-Agent-Office-Setup-<version>.exe --repo N4ole/ai-agent-office
+   ```
+
+Les versions 1.1.0 à 1.3.1 ont été construites à la main, sans empreinte ni attestation ; 1.1.0 à 1.3.0 n’ont pas de
+code source correspondant dans l’historique (voir le [CHANGELOG](../../CHANGELOG.md)).
 
 ## Construire depuis les sources
 

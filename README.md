@@ -25,7 +25,7 @@ construisez-les vous-même (`npm run dist`, voir *Développement*). Ils sont pro
 
 - **Fichier unique (portable)** : `AI-Agent-Office-<version>-portable.exe`, double-clic, sans installation.
   Il se décompresse à chaque lancement (quelques secondes).
-- **Installateur** : `AI Agent Office Setup <version>.exe` (raccourci bureau, désinstallation propre).
+- **Installateur** : `AI-Agent-Office-Setup-<version>.exe` (raccourci bureau, désinstallation propre).
 - Les exécutables ne sont pas signés : SmartScreen → « Informations complémentaires » → « Exécuter quand même ».
 - Prérequis : Claude Code CLI (`claude --version`). Node.js uniquement pour les hooks optionnels.
 - L’historique est conservé dans `%APPDATA%\AI Agent Office` (commun aux deux versions).

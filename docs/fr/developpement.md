@@ -110,15 +110,27 @@ ensuite le connecteur dans `main()` de `src/main/index.ts`.
 
 ## Publier une version
 
-1. Incrémentez `version` dans `package.json`.
-2. `npm test` puis `npm run dist` : les fichiers `AI Agent Office Setup <version>.exe` et
-   `AI-Agent-Office-<version>-portable.exe` sont créés dans `release/`.
-3. Créez la Release avec la CLI GitHub :
+Les releases sont construites par GitHub Actions ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)),
+jamais depuis un poste local, pour que chaque binaire publié corresponde à un commit.
+
+1. Dans une pull request : incrémentez `version` dans `package.json` (et `package-lock.json`, via
+   `npm version <x.y.z> --no-git-tag-version`) et déplacez les entrées `[Non publié]` du `CHANGELOG.md` sous la
+   nouvelle version.
+2. Une fois la PR fusionnée, taggez **le commit de fusion sur `main`** et poussez le tag :
 
    ```bash
-   gh release create v<version> "release/AI Agent Office Setup <version>.exe" \
-     "release/AI-Agent-Office-<version>-portable.exe" --title "AI Agent Office <version>" --notes "…"
+   git switch main && git pull
+   git tag -a v<version> -m "AI Agent Office <version>"
+   git push origin v<version>
    ```
+
+3. Le workflow vérifie que le tag correspond à la version de `package.json` (il échoue sinon), lance les tests,
+   construit l’installateur NSIS et l’exécutable portable, écrit `SHA256SUMS.txt`, crée une attestation de
+   provenance, puis crée la Release GitHub avec des notes générées automatiquement (catégories définies dans
+   [`.github/release.yml`](../../.github/release.yml)).
+
+`npm run dist` reste utilisable en local pour essayer le packaging (dossier `release/`), mais ces fichiers ne doivent
+pas être publiés. La signature de code n’est pas configurée ; un emplacement commenté est prévu dans le workflow.
 
 Les dossiers `dist/`, `release/` et `node_modules/` sont ignorés par git : les exécutables ne sont diffusés que via les
 Releases.

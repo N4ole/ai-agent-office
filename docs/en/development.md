@@ -110,15 +110,25 @@ text through `clean()` / `redact()` before putting it in an event. Then wire the
 
 ## Publishing a release
 
-1. Bump `version` in `package.json`.
-2. `npm test`, then `npm run dist`: `AI Agent Office Setup <version>.exe` and `AI-Agent-Office-<version>-portable.exe`
-   are created in `release/`.
-3. Create the Release with the GitHub CLI:
+Releases are built by GitHub Actions ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)), never
+from a local machine, so that every published binary matches a commit.
+
+1. In a pull request: bump `version` in `package.json` (and `package-lock.json`, via `npm version <x.y.z> --no-git-tag-version`)
+   and move the `[Unreleased]` entries of `CHANGELOG.md` under the new version.
+2. Once merged, tag **the merge commit on `main`** and push the tag:
 
    ```bash
-   gh release create v<version> "release/AI Agent Office Setup <version>.exe" \
-     "release/AI-Agent-Office-<version>-portable.exe" --title "AI Agent Office <version>" --notes "…"
+   git switch main && git pull
+   git tag -a v<version> -m "AI Agent Office <version>"
+   git push origin v<version>
    ```
+
+3. The workflow checks that the tag equals `package.json` version (it fails otherwise), runs the tests, builds the NSIS
+   installer and the portable exe, writes `SHA256SUMS.txt`, creates a build-provenance attestation, then creates the
+   GitHub Release with automatically generated notes (categories from [`.github/release.yml`](../../.github/release.yml)).
+
+`npm run dist` still works locally to try the packaging (`release/` folder), but do not publish those files.
+Code signing is not configured; the workflow has a commented placeholder for it.
 
 The `dist/`, `release/` and `node_modules/` folders are ignored by git: executables are distributed only through
 Releases.

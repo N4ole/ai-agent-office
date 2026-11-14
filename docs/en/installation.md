@@ -15,8 +15,8 @@
 
 1. Open the [Releases](https://github.com/N4ole/ai-agent-office/releases) page and pick the latest version.
 2. Download one of the two files:
-   - **`AI Agent Office Setup <version>.exe`**: installer with a desktop shortcut and a clean uninstall. You can change
-     the installation folder.
+   - **`AI-Agent-Office-Setup-<version>.exe`**: installer with a desktop shortcut and a clean uninstall. You can change
+     the installation folder. (Up to 1.3.1: `AI.Agent.Office.Setup.<version>.exe`.)
    - **`AI-Agent-Office-<version>-portable.exe`**: a single file, no installation. It unpacks itself on every launch,
      which takes a few seconds.
 3. Run the file.
@@ -25,6 +25,33 @@
 
 The executables are **not signed**, so Windows SmartScreen will show "Windows protected your PC". Click **More info**,
 then **Run anyway**. If you would rather not run a downloaded binary, build the app yourself (next section).
+
+Why no signature? A Windows code-signing certificate (OV/EV or Azure Trusted Signing) has a yearly cost and is not in
+place yet. Instead, every release lets you check what you downloaded (next section). Some antivirus products may also
+flag the portable build, which unpacks itself on every launch: use the installer in that case.
+
+### Verify a download
+
+Starting with the release after 1.3.1, the executables are built by GitHub Actions from the tagged commit
+([`release.yml` workflow](../../.github/workflows/release.yml)), and every release includes `SHA256SUMS.txt`.
+
+1. **SHA-256 hash** (PowerShell, in the download folder):
+
+   ```powershell
+   Get-FileHash .\AI-Agent-Office-Setup-<version>.exe -Algorithm SHA256
+   ```
+
+   The value must match (case-insensitive) the one in `SHA256SUMS.txt`.
+
+2. **Provenance** (proves the file was produced by this repository's workflow, and from which commit), with the
+   [GitHub CLI](https://cli.github.com/):
+
+   ```powershell
+   gh attestation verify .\AI-Agent-Office-Setup-<version>.exe --repo N4ole/ai-agent-office
+   ```
+
+Versions 1.1.0 to 1.3.1 were built by hand, without hashes or attestations; 1.1.0 to 1.3.0 have no matching source in
+the git history (see the [CHANGELOG](../../CHANGELOG.md)).
 
 ## Build from source
 
