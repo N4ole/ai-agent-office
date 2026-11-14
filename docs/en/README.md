@@ -18,6 +18,7 @@ an actual event or from a conclusion clearly labelled as inferred.
 | [Usage](usage.md) | Interface, watching agents, controlling sessions, notifications, settings, shortcuts, troubleshooting |
 | [How it works](how-it-works.md) | Architecture, data sources, state machine, privacy, storage |
 | [Development](development.md) | Code layout, commands, tests, adding a connector, publishing a release |
+| [Price table](pricing.md) | Date and source of the prices behind the estimated cost, how to update them |
 
 ## At a glance
 
