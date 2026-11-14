@@ -18,6 +18,8 @@ import { JsonlTailer } from './tailer';
 import { parseLines } from './parser';
 import { ManagedSessions, killTree } from './managed';
 import { clean, firstLine } from '../../core/redact';
+import { checkKillTarget, queryProcess, type ProcessInfo } from '../../core/processCheck';
+import { cmdWindowSpec, resolveProgram, wtSpec } from '../../core/winCommand';
 
 export interface OffsetStore {
   getOffset(file: string): number | undefined;
@@ -33,6 +35,10 @@ export interface ClaudeProviderOptions {
   /** Folders whose Claude Code processes are the app's own helpers (quota checks): never shown as agents. */
   ignoreCwds?: () => string[];
   onRateLimit?: (info: unknown) => void;
+  /** Process lookup used before a forced stop (default: CIM query). Injectable for tests. */
+  processInfo?: (pid: number) => Promise<ProcessInfo | null>;
+  /** Process-tree kill (default: taskkill /T /F). Injectable for tests. */
+  killTree?: (pid: number | undefined) => void;
 }
 
 interface RegistryEntry {
@@ -939,9 +945,14 @@ export class ClaudeProvider implements AgentProvider {
           return { ok: true, message: 'Arrêt demandé' };
         }
         if (a.pid.value) {
+          // The PID was read from a file: make sure it still is this Claude Code session (R-04).
+          const pid = a.pid.value;
+          const info = await (this.o.processInfo ?? queryProcess)(pid);
+          const check = checkKillTarget(info, this.registry.get(a.sessionId)?.startedAt);
+          if (!check.ok) return { ok: false, message: `Arrêt refusé : ${check.reason}.` };
           this.lostReported.add(a.sessionId); // expected disappearance, not a crash
-          killTree(a.pid.value);
-          return { ok: true, message: `Processus ${a.pid.value} arrêté` };
+          (this.o.killTree ?? killTree)(pid);
+          return { ok: true, message: `Processus ${pid} arrêté` };
         }
         return { ok: false, message: 'PID inconnu' };
       case 'resume':
@@ -951,7 +962,7 @@ export class ClaudeProvider implements AgentProvider {
         return openTerminal(a.cwd);
       case 'resumeInTerminal':
         if (a.alive.value === true) return { ok: false, message: 'La session tourne déjà ; ouvrez plutôt un terminal dans son dossier.' };
-        return openTerminal(a.cwd, [this.o.claudePath(), '--resume', a.sessionId]);
+        return openTerminal(a.cwd, [resolveProgram(this.o.claudePath()), '--resume', a.sessionId]);
       case 'openFolder':
         return { ok: true, message: a.cwd }; // handled by the main process (shell.openPath)
     }
@@ -974,14 +985,22 @@ export function openTerminal(cwd: string, cmd?: string[]): Promise<ControlResult
   return new Promise((resolve) => {
     if (!cwd) return resolve({ ok: false, message: 'Dossier de travail inconnu' });
     if (process.platform !== 'win32') return resolve({ ok: false, message: 'Disponible uniquement sous Windows' });
-    const wtArgs = ['-d', cwd, ...(cmd ?? [])];
-    const child = spawn('wt.exe', wtArgs, { detached: true, stdio: 'ignore', windowsHide: false });
+    // The folder comes from transcripts: & ^ | ; % in its name must never be interpreted (R-18).
+    const wt = wtSpec(cwd, cmd);
+    const child = spawn(wt.file, wt.args, { detached: true, stdio: 'ignore', windowsHide: false });
     child.on('error', () => {
-      // Windows Terminal absent: fall back to cmd.exe
-      const c2 = spawn('cmd.exe', ['/c', 'start', '""', '/D', cwd, 'cmd.exe', '/K', ...(cmd ?? [])], {
+      // Windows Terminal absent: fall back to a cmd.exe window, started *in* the folder.
+      let spec;
+      try {
+        spec = cmdWindowSpec(cmd);
+      } catch (e: any) {
+        return resolve({ ok: false, message: `Impossible d’ouvrir un terminal : ${e?.message ?? e}` });
+      }
+      const c2 = spawn(spec.file, spec.args, {
+        cwd,
         detached: true,
         stdio: 'ignore',
-        windowsVerbatimArguments: false,
+        windowsVerbatimArguments: spec.windowsVerbatimArguments,
       });
       c2.on('error', (e) => resolve({ ok: false, message: `Impossible d’ouvrir un terminal : ${e.message}` }));
       c2.on('spawn', () => resolve({ ok: true, message: 'Terminal ouvert (cmd)' }));

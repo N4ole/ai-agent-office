@@ -80,7 +80,7 @@ npm test
 
 ## Variables d'environnement de test
 
-Utiles pour vérifier le rendu sans toucher à vos données :
+Utiles pour vérifier le rendu sans toucher à vos données. Elles ne sont prises en compte **qu’en développement** (`npm run dev` / `npm start` depuis les sources) : une application installée ou portable les ignore.
 
 | Variable | Rôle |
 |---|---|

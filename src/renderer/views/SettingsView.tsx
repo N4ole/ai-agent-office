@@ -4,6 +4,7 @@ import { api } from '../api';
 import { store, toast, useStore } from '../store';
 import { Switch, confirmAction } from '../ui';
 import { PRICES, PRICES_AS_OF, PRICES_SOURCE } from '../../shared/pricing';
+import { checkRedactPatterns } from '../../shared/redactPatterns';
 
 const fmtPrice = (v: number) => `${v < 1 ? v.toFixed(v < 0.1 ? 3 : 2) : v % 1 ? v.toFixed(2) : v} $`;
 
@@ -60,7 +61,16 @@ export function SettingsView() {
   }, []);
 
   const save = async (patch: Partial<Settings>, quiet = false) => {
-    const s = await api.setSettings(patch);
+    let s: Settings;
+    try {
+      s = await api.setSettings(patch);
+    } catch (e: any) {
+      // Refused by the main process (e.g. Claude Code path not found): show why, restore the field.
+      const msg = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
+      toast({ type: 'error', level: 'error', title: 'Paramètre refusé', body: msg });
+      setDraft(settings);
+      return;
+    }
     store.set({ settings: s });
     if (!quiet) toast({ type: 'task_end', level: 'success', title: 'Paramètres enregistrés', body: '' });
   };
@@ -150,7 +160,7 @@ export function SettingsView() {
                   if (
                     !(await confirmAction(
                       'Installer les hooks ?',
-                      '~/.claude/settings.json sera modifié (sauvegarde .ai-agent-office.bak créée). Effet sur les nouvelles sessions.',
+                      '~/.claude/settings.json sera modifié (sauvegarde horodatée créée à côté). Effet sur les nouvelles sessions.',
                       'Installer',
                       false,
                     ))
@@ -287,15 +297,8 @@ export function SettingsView() {
                     .split('\n')
                     .map((x) => x.trim())
                     .filter(Boolean);
-                  const bad = list.filter((p) => {
-                    try {
-                      new RegExp(p);
-                      return false;
-                    } catch {
-                      return true;
-                    }
-                  });
-                  if (bad.length) return toast({ type: 'error', level: 'error', title: 'Expression invalide', body: bad.join(', ') });
+                  const { errors } = checkRedactPatterns(list);
+                  if (errors.length) return toast({ type: 'error', level: 'error', title: 'Expression refusée', body: errors.join(' · ') });
                   save({ redactPatterns: list });
                 }}
               />

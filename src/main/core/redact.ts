@@ -1,5 +1,7 @@
 // Masks secrets before anything is displayed, stored or exported.
 
+import { checkRedactPatterns } from '../../shared/redactPatterns';
+
 const BUILTIN: RegExp[] = [
   /sk-ant-[A-Za-z0-9_-]{10,}/g, // Anthropic keys
   /\bsk-[A-Za-z0-9_-]{20,}/g, // OpenAI-style keys
@@ -21,15 +23,14 @@ const MASK = '••••••';
 
 let custom: RegExp[] = [];
 
-export function setCustomRedactions(patterns: string[]): void {
-  custom = [];
-  for (const p of patterns) {
-    try {
-      if (p.trim()) custom.push(new RegExp(p, 'g'));
-    } catch {
-      // invalid user pattern: ignored (validated in the settings UI)
-    }
-  }
+/**
+ * Installs the user's patterns. Unsafe ones (invalid, too long, catastrophic backtracking...) are
+ * never applied (R-19); their errors are returned.
+ */
+export function setCustomRedactions(patterns: string[]): string[] {
+  const { ok, errors } = checkRedactPatterns(patterns);
+  custom = ok.map((p) => new RegExp(p, 'g'));
+  return errors;
 }
 
 export function redact(input: string): string {

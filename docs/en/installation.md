@@ -78,7 +78,7 @@ again* (Revérifier).
 |---|---|
 | `%APPDATA%\AI Agent Office\office.db` | SQLite database: agents, events, notifications, settings. Shared by the installed and portable versions. |
 | `%USERPROFILE%\.ai-agent-office\` | Working folder: hook relay (`hook-relay.js`, `hook-events.jsonl`) and an internal technical folder. |
-| `%USERPROFILE%\.claude\settings.json` | **Modified only** if you install the hooks (a `settings.json.ai-agent-office.bak` backup is created first). |
+| `%USERPROFILE%\.claude\settings.json` | **Modified only** if you install the hooks (a timestamped backup `settings.json.ai-agent-office-<date>.bak` is created before every change, including uninstall; older backups are never overwritten). |
 
 ## Update
 

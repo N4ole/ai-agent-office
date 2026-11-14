@@ -1,5 +1,6 @@
 import type { NotificationType, Settings } from '../../shared/types';
 import { defaultClaudeHome } from '../providers/claude/claudeProvider';
+import { checkRedactPatterns } from '../../shared/redactPatterns';
 
 const TYPES: NotificationType[] = ['agent_new', 'subagent_new', 'task_start', 'task_end', 'error', 'blocked', 'session_lost', 'resources', 'cost', 'quota'];
 const OS_DEFAULT = new Set<NotificationType>(['blocked', 'session_lost', 'cost', 'task_end', 'quota']);
@@ -35,7 +36,7 @@ export function mergeSettings(stored: Partial<Settings> | undefined): Settings {
   out.costThresholdUSD = clampNum(out.costThresholdUSD, 0, 100000, d.costThresholdUSD);
   out.cpuThresholdPct = clampNum(out.cpuThresholdPct, 1, 100, d.cpuThresholdPct);
   out.memThresholdMB = clampNum(out.memThresholdMB, 64, 1_000_000, d.memThresholdMB);
-  if (!Array.isArray(out.redactPatterns)) out.redactPatterns = [];
+  out.redactPatterns = checkRedactPatterns(out.redactPatterns).ok; // R-19: unsafe patterns are dropped
   return out;
 }
 

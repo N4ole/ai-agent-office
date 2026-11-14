@@ -187,7 +187,7 @@ Without hooks, the app already observes everything through Claude Code's files. 
 Install from *Settings → Optional hooks → Install* (Node.js required).
 
 - Three entries (`Notification`, `SessionStart`, `SessionEnd`), tagged "ai-agent-office", are added to
-  `~/.claude/settings.json`; a `settings.json.ai-agent-office.bak` backup is made right before.
+  `~/.claude/settings.json`; a timestamped backup `settings.json.ai-agent-office-<date>.bak` is made right before (also on uninstall), and the file is written atomically.
 - They only affect **new** Claude Code sessions.
 - The relay never blocks Claude Code: it exits by itself after 2 seconds at most and ignores any error.
 - *Remove* deletes only the entries the app added. If `settings.json` cannot be read, the operation is cancelled so

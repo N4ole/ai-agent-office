@@ -1,8 +1,8 @@
 // Optional installation of Claude Code hooks into ~/.claude/settings.json.
 // Only adds entries whose command contains HOOK_MARKER, so they can be removed cleanly.
-// A backup of settings.json is written before any change.
+// A timestamped backup of settings.json is written before every change, and writes are atomic.
 
-import { promises as fsp } from 'node:fs';
+import { constants as fsConstants, promises as fsp } from 'node:fs';
 import path from 'node:path';
 
 export const HOOK_MARKER = 'ai-agent-office';
@@ -67,16 +67,57 @@ export async function installHooks(claudeHome: string, relaySource: string, offi
   await fsp.mkdir(officeHome, { recursive: true });
   const relay = path.join(officeHome, 'hook-relay.js');
   await fsp.copyFile(relaySource, relay);
-  await fsp.writeFile(`${file}.ai-agent-office.bak`, JSON.stringify(current, null, 2));
-  await fsp.writeFile(file, JSON.stringify(addHooks(current, hookCommand(relay)), null, 2));
-  return `Hooks installés (${HOOK_EVENTS.join(', ')}). Sauvegarde : settings.json.ai-agent-office.bak. Actifs pour les nouvelles sessions Claude Code.`;
+  const backup = await backupFile(file);
+  await writeJsonAtomic(file, addHooks(current, hookCommand(relay)));
+  return `Hooks installés (${HOOK_EVENTS.join(', ')}). ${backupNote(backup)} Actifs pour les nouvelles sessions Claude Code.`;
 }
 
 export async function uninstallHooks(claudeHome: string): Promise<string> {
   const file = path.join(claudeHome, 'settings.json');
   const current = await readSettings(file);
-  await fsp.writeFile(file, JSON.stringify(removeHooks(current), null, 2));
-  return 'Hooks AI Agent Office retirés de settings.json';
+  const backup = await backupFile(file);
+  await writeJsonAtomic(file, removeHooks(current));
+  return `Hooks AI Agent Office retirés de settings.json. ${backupNote(backup)}`;
+}
+
+function backupNote(backup: string | null): string {
+  return backup ? `Sauvegarde : ${path.basename(backup)}.` : '';
+}
+
+/**
+ * Copies `file` to `<file>.ai-agent-office-<date>.bak` before a change (R-05). Never overwrites an
+ * existing backup. Returns the backup path, or null if `file` does not exist yet.
+ */
+export async function backupFile(file: string, now = new Date()): Promise<string | null> {
+  const p = (n: number, l = 2) => String(n).padStart(l, '0');
+  const stamp = `${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}-${p(now.getMilliseconds(), 3)}`;
+  for (let i = 0; i < 1000; i++) {
+    const target = `${file}.ai-agent-office-${stamp}${i ? `-${i}` : ''}.bak`;
+    try {
+      await fsp.copyFile(file, target, fsConstants.COPYFILE_EXCL);
+      return target;
+    } catch (e: any) {
+      if (e?.code === 'ENOENT') return null;
+      if (e?.code !== 'EEXIST') throw e;
+    }
+  }
+  throw new Error('Impossible de créer une sauvegarde de settings.json');
+}
+
+/**
+ * Writes JSON through a temporary file in the same folder, then renames it over the target, so a
+ * crash never leaves a half-written settings.json behind (R-05).
+ */
+export async function writeJsonAtomic(file: string, value: unknown, onTemp?: (tmp: string) => void): Promise<void> {
+  const tmp = `${file}.${process.pid}-${Date.now()}.tmp`;
+  onTemp?.(tmp);
+  try {
+    await fsp.writeFile(tmp, JSON.stringify(value, null, 2));
+    await fsp.rename(tmp, file);
+  } catch (e) {
+    await fsp.rm(tmp, { force: true }).catch(() => {});
+    throw e;
+  }
 }
 
 export async function hooksStatus(claudeHome: string): Promise<boolean> {

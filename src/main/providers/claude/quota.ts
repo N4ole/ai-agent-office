@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import type { QuotaState, QuotaWindow } from '../../../shared/types';
 import { killTree } from './managed';
+import { claudeSpawn, type SpawnSpec } from '../../core/winCommand';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
@@ -93,7 +94,7 @@ export interface QuotaMonitorOptions {
   /** Kills a process and its children (default: taskkill /T on Windows). */
   killTree?: (pid: number | undefined) => void;
   /** Program and arguments actually started for the given claude arguments. */
-  command?: (args: string[]) => { file: string; args: string[] };
+  command?: (args: string[]) => SpawnSpec;
 }
 
 export class QuotaMonitor {
@@ -114,7 +115,7 @@ export class QuotaMonitor {
     this.opts = {
       timeoutMs: opts.timeoutMs ?? 30_000,
       killTree: opts.killTree ?? killTree,
-      command: opts.command ?? ((args) => ({ file: this.claudePath(), args })),
+      command: opts.command ?? ((args) => claudeSpawn(this.claudePath(), args)),
     };
     try {
       mkdirSync(cwd, { recursive: true });
@@ -179,7 +180,7 @@ export class QuotaMonitor {
       let child;
       try {
         const cmd = this.opts.command(USAGE_ARGS);
-        child = spawn(cmd.file, cmd.args, { cwd: this.cwd, windowsHide: true });
+        child = spawn(cmd.file, cmd.args, { cwd: this.cwd, windowsHide: true, windowsVerbatimArguments: cmd.windowsVerbatimArguments });
       } catch (e: any) {
         return done({ plan: 'unknown', windows: [], fetchedAt: Date.now(), source: 'usage-command', error: `Claude Code introuvable : ${e?.message ?? e}` });
       }
