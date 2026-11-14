@@ -379,8 +379,30 @@ export class OfficeDB {
     );
   }
 
-  exportAll(): { agents: InternalAgent[]; events: AgentEvent[]; notifications: AppNotification[] } {
-    return { agents: this.loadAgents(), events: this.queryEvents({ limit: 5000 }), notifications: this.loadNotifications(5000) };
+  /**
+   * Every event visible in the logs (usage/cost bookkeeping excluded, as in the former export),
+   * newest first, by pages: the full history never has to sit in one array (R-07).
+   */
+  *eventPages(pageSize = 1000): Generator<AgentEvent[]> {
+    const hidden = HIDDEN_KINDS.map(() => '?').join(',');
+    let last: { ts: number; id: string } | null = null;
+    for (;;) {
+      const rows: any[] = last
+        ? this.all(`SELECT * FROM events WHERE kind NOT IN (${hidden}) AND (ts < ? OR (ts = ? AND id < ?)) ORDER BY ts DESC, id DESC LIMIT ?`, [
+            ...HIDDEN_KINDS,
+            last.ts,
+            last.ts,
+            last.id,
+            pageSize,
+          ])
+        : this.all(`SELECT * FROM events WHERE kind NOT IN (${hidden}) ORDER BY ts DESC, id DESC LIMIT ?`, [...HIDDEN_KINDS, pageSize]);
+      if (!rows.length) return;
+      const page = rows.map(rowToEvent);
+      yield page;
+      if (rows.length < pageSize) return;
+      const tail = page[page.length - 1];
+      last = { ts: tail.ts, id: tail.id };
+    }
   }
 
   close(): void {

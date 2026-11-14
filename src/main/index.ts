@@ -18,6 +18,7 @@ import { hooksStatus, installHooks, uninstallHooks } from './core/hooks';
 import { addUsageCost, progressOf } from './core/reducer';
 import { QuotaMonitor } from './providers/claude/quota';
 import { purgeHistory } from './core/purge';
+import { exportToFile } from './db/export';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -444,9 +445,16 @@ function registerIpc() {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (r.canceled || !r.filePath) return { ok: false, message: 'Annulé' };
-    const data = payload?.events ? { events: payload.events } : db.exportAll();
-    await fsp.writeFile(r.filePath, JSON.stringify(data, null, 2));
-    return { ok: true, message: `Exporté vers ${r.filePath}` };
+    try {
+      if (payload?.events) {
+        await fsp.writeFile(r.filePath, JSON.stringify({ events: payload.events }, null, 2));
+        return { ok: true, message: `Exporté vers ${r.filePath}` };
+      }
+      const { events } = await exportToFile(db, r.filePath);
+      return { ok: true, message: `Export complet (${events} événements) vers ${r.filePath}` };
+    } catch (e: any) {
+      return { ok: false, message: `Échec de l’export : ${e?.message ?? e}` };
+    }
   });
   ipcMain.handle(IPC.purge, (_e, days: number | 'all') => {
     const r = purgeHistory(db, manager, days);
