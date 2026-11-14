@@ -79,7 +79,7 @@ elles ont été lancées, apparaissent d'elles-mêmes. Vous pouvez rouvrir ces v
 |---|---|
 | `%APPDATA%\AI Agent Office\office.db` | Base SQLite : agents, événements, notifications, paramètres. Commune à la version installée et à la version portable. |
 | `%USERPROFILE%\.ai-agent-office\` | Dossier de travail : relais des hooks (`hook-relay.js`, `hook-events.jsonl`) et dossier technique interne. |
-| `%USERPROFILE%\.claude\settings.json` | **Modifié uniquement** si vous installez les hooks (sauvegarde `settings.json.ai-agent-office.bak` créée avant). |
+| `%USERPROFILE%\.claude\settings.json` | **Modifié uniquement** si vous installez les hooks (sauvegarde horodatée `settings.json.ai-agent-office-<date>.bak` créée avant chaque modification, désinstallation comprise ; les anciennes ne sont jamais écrasées). |
 
 ## Mettre à jour
 

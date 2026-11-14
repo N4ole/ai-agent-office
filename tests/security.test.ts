@@ -1,11 +1,12 @@
 // Security hardening from the 2026-11-14 audit (chantier 3).
 
 import { afterAll, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ClaudeProvider } from '../src/main/providers/claude/claudeProvider';
 import { createAgent } from '../src/main/core/reducer';
+import { installHooks, uninstallHooks, writeJsonAtomic } from '../src/main/core/hooks';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../src/main/core/processCheck';
 
 const dirs: string[] = [];
@@ -100,4 +101,39 @@ describe('force stop of an external session (R-04)', () => {
     },
     20_000,
   );
+});
+
+describe('~/.claude/settings.json changes (R-05)', () => {
+  it('backs up before every change, never overwrites a backup, and leaves no temp file', async () => {
+    const home = tmp();
+    const office = path.join(home, 'office');
+    const relay = path.join(home, 'relay.js');
+    writeFileSync(relay, '// relay');
+    const settingsFile = path.join(home, 'settings.json');
+    const original = { theme: 'dark', hooks: { Notification: [{ hooks: [{ type: 'command', command: 'mine' }] }] } };
+    writeFileSync(settingsFile, JSON.stringify(original));
+    await installHooks(home, relay, office);
+    await installHooks(home, relay, office);
+    await uninstallHooks(home);
+    const files = readdirSync(home);
+    const backups = files.filter((f) => /^settings\.json\.ai-agent-office-.*\.bak$/.test(f)).sort();
+    expect(backups).toHaveLength(3); // install, re-install, uninstall: one each, none overwritten
+    expect(JSON.parse(readFileSync(path.join(home, backups[0]), 'utf8'))).toEqual(original);
+    expect(files.filter((f) => f.endsWith('.tmp'))).toEqual([]);
+    const final = JSON.parse(readFileSync(settingsFile, 'utf8'));
+    expect(final.theme).toBe('dark');
+    expect(final.hooks.Notification[0].hooks[0].command).toBe('mine');
+  });
+
+  it('writes settings.json atomically (temp file in the same folder, then rename)', async () => {
+    const home = tmp();
+    const file = path.join(home, 'settings.json');
+    writeFileSync(file, '{"a":1}');
+    const seen: string[] = [];
+    await writeJsonAtomic(file, { a: 2 }, (tmpFile) => void seen.push(tmpFile));
+    expect(seen).toHaveLength(1);
+    expect(path.dirname(seen[0])).toBe(home);
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ a: 2 });
+    expect(readdirSync(home)).toEqual(['settings.json']);
+  });
 });

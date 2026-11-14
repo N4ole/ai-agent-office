@@ -150,7 +150,7 @@ export function SettingsView() {
                   if (
                     !(await confirmAction(
                       'Installer les hooks ?',
-                      '~/.claude/settings.json sera modifié (sauvegarde .ai-agent-office.bak créée). Effet sur les nouvelles sessions.',
+                      '~/.claude/settings.json sera modifié (sauvegarde horodatée créée à côté). Effet sur les nouvelles sessions.',
                       'Installer',
                       false,
                     ))

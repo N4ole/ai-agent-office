@@ -186,7 +186,7 @@ Sans hooks, l'application observe déjà tout via les fichiers de Claude Code. L
 Installation : *Paramètres → Hooks optionnels → Installer* (Node.js requis).
 
 - Trois entrées (`Notification`, `SessionStart`, `SessionEnd`), marquées « ai-agent-office », sont ajoutées à
-  `~/.claude/settings.json` ; une sauvegarde `settings.json.ai-agent-office.bak` est créée juste avant.
+  `~/.claude/settings.json` ; une sauvegarde horodatée `settings.json.ai-agent-office-<date>.bak` est créée juste avant (désinstallation comprise) et le fichier est écrit de façon atomique.
 - Elles ne concernent que les **nouvelles** sessions Claude Code.
 - Le relais ne bloque jamais Claude Code : il s'arrête de lui-même après 2 secondes au maximum et ignore toute erreur.
 - *Retirer* supprime uniquement les entrées ajoutées par l'application. Si `settings.json` est illisible, l'opération est
