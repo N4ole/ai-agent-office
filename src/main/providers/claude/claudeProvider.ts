@@ -19,6 +19,7 @@ import { parseLines } from './parser';
 import { ManagedSessions, killTree } from './managed';
 import { clean, firstLine } from '../../core/redact';
 import { checkKillTarget, queryProcess, type ProcessInfo } from '../../core/processCheck';
+import { cmdWindowSpec, wtSpec } from '../../core/winCommand';
 
 export interface OffsetStore {
   getOffset(file: string): number | undefined;
@@ -984,14 +985,22 @@ export function openTerminal(cwd: string, cmd?: string[]): Promise<ControlResult
   return new Promise((resolve) => {
     if (!cwd) return resolve({ ok: false, message: 'Dossier de travail inconnu' });
     if (process.platform !== 'win32') return resolve({ ok: false, message: 'Disponible uniquement sous Windows' });
-    const wtArgs = ['-d', cwd, ...(cmd ?? [])];
-    const child = spawn('wt.exe', wtArgs, { detached: true, stdio: 'ignore', windowsHide: false });
+    // The folder comes from transcripts: & ^ | ; % in its name must never be interpreted (R-18).
+    const wt = wtSpec(cwd, cmd);
+    const child = spawn(wt.file, wt.args, { detached: true, stdio: 'ignore', windowsHide: false });
     child.on('error', () => {
-      // Windows Terminal absent: fall back to cmd.exe
-      const c2 = spawn('cmd.exe', ['/c', 'start', '""', '/D', cwd, 'cmd.exe', '/K', ...(cmd ?? [])], {
+      // Windows Terminal absent: fall back to a cmd.exe window, started *in* the folder.
+      let spec;
+      try {
+        spec = cmdWindowSpec(cmd);
+      } catch (e: any) {
+        return resolve({ ok: false, message: `Impossible d’ouvrir un terminal : ${e?.message ?? e}` });
+      }
+      const c2 = spawn(spec.file, spec.args, {
+        cwd,
         detached: true,
         stdio: 'ignore',
-        windowsVerbatimArguments: false,
+        windowsVerbatimArguments: spec.windowsVerbatimArguments,
       });
       c2.on('error', (e) => resolve({ ok: false, message: `Impossible d’ouvrir un terminal : ${e.message}` }));
       c2.on('spawn', () => resolve({ ok: true, message: 'Terminal ouvert (cmd)' }));
