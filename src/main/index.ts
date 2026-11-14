@@ -17,6 +17,7 @@ import { setCustomRedactions } from './core/redact';
 import { hooksStatus, installHooks, uninstallHooks } from './core/hooks';
 import { addUsageCost, progressOf } from './core/reducer';
 import { QuotaMonitor } from './providers/claude/quota';
+import { purgeHistory } from './core/purge';
 import type { QuotaState } from '../shared/types';
 
 const OFFICE_HOME = path.join(os.homedir(), '.ai-agent-office');
@@ -447,15 +448,7 @@ function registerIpc() {
     await fsp.writeFile(r.filePath, JSON.stringify(data, null, 2));
     return { ok: true, message: `Exporté vers ${r.filePath}` };
   });
-  ipcMain.handle(IPC.purge, (_e, days: number | 'all') => {
-    if (days === 'all') {
-      db.purgeAll();
-      return { ok: true, message: 'Historique supprimé (les sessions actives réapparaîtront au prochain événement)' };
-    }
-    const r = db.purgeOlderThan(Number(days));
-    for (const [id, a] of manager.agents) if (a.lastEventAt < Date.now() - Number(days) * 86_400_000 && a.status === 'done') manager.agents.delete(id);
-    return { ok: true, message: `${r.events} événements et ${r.agents} agents supprimés` };
-  });
+  ipcMain.handle(IPC.purge, (_e, days: number | 'all') => purgeHistory(db, manager, days));
   ipcMain.handle(IPC.markRead, () => db.markAllRead());
   ipcMain.handle(IPC.pickFolder, async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] });
