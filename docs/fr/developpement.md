@@ -92,6 +92,8 @@ Utiles pour vérifier le rendu sans toucher à vos données. Elles ne sont prise
 | `AAO_EXIT` | Quitte après la dernière capture. |
 | `VITE_DEV_SERVER_URL` | URL de l'interface en développement (posée par `npm run dev`). |
 
+`npm run screenshots` les utilise pour régénérer les captures du README (`docs/images/*.png`) en mode démo, avec un dossier de données jetable et un faux `claude` qui ne répond qu’à `/usage` : votre historique et vos sessions Claude Code ne sont jamais lus. Une fenêtre s’ouvre une vingtaine de secondes. Taille réglable : `SHOTS_SIZE=1920x1080`.
+
 ## Ajouter un connecteur
 
 Un connecteur est une classe qui implémente `AgentProvider` (`src/main/providers/provider.ts`) :
