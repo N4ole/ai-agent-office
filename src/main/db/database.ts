@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 const NOT_STORED = new Set(['thinking']);
 /** Stored for deduplication/statistics but hidden from logs unless explicitly requested. */
 export const HIDDEN_KINDS = ['usage', 'cost'];
+const HISTORY_CUTOFF_KEY = 'historyCutoff';
 
 export interface EventQuery {
   agentId?: string;
@@ -57,6 +58,8 @@ export class OfficeDB {
   private timer: NodeJS.Timeout | null = null;
   private offsets = new Map<string, number>();
   private saving = false;
+  /** Events older than this (epoch ms) are never stored again: set by an explicit purge (R-01). */
+  private cutoff = 0;
 
   /** `file` = null keeps everything in memory (tests). */
   constructor(private file: string | null) {}
@@ -79,6 +82,18 @@ export class OfficeDB {
     } else this.db = new S.Database();
     this.db.exec(SCHEMA);
     for (const r of this.all<{ file: string; offset: number }>('SELECT file, offset FROM offsets')) this.offsets.set(r.file, r.offset);
+    this.cutoff = Number(this.getSetting<number>(HISTORY_CUTOFF_KEY)) || 0;
+  }
+
+  /** Epoch ms before which history was purged by the user (0 = never). */
+  get historyCutoff(): number {
+    return this.cutoff;
+  }
+
+  private rememberCutoff(ts: number): void {
+    if (ts <= this.cutoff) return;
+    this.cutoff = ts;
+    this.setSetting(HISTORY_CUTOFF_KEY, ts);
   }
 
   private all<T>(sql: string, params: any[] = []): T[] {
@@ -170,6 +185,7 @@ export class OfficeDB {
     try {
       this.db.exec('BEGIN');
       for (const e of events) {
+        if (e.ts < this.cutoff && e.source !== 'demo') continue; // purged history: never re-imported
         if (NOT_STORED.has(e.kind) || e.source === 'demo') {
           fresh.push(e);
           continue;
@@ -319,21 +335,29 @@ export class OfficeDB {
   }
 
   // ---- maintenance ----
-  /** Deletes events/notifications older than `days`, and agents with no activity since then. */
-  purgeOlderThan(days: number): { events: number; agents: number } {
-    const cutoff = Date.now() - days * 86_400_000;
+  /**
+   * Deletes events/notifications older than `days`, and agents with no activity since then.
+   * `remember` (explicit purge by the user) also keeps transcripts from re-importing that period.
+   */
+  purgeOlderThan(days: number, opts: { now?: number; remember?: boolean } = {}): { events: number; agents: number } {
+    const cutoff = (opts.now ?? Date.now()) - days * 86_400_000;
     this.db.run('DELETE FROM events WHERE ts < ?', [cutoff]);
     const ev = this.db.getRowsModified();
     this.db.run('DELETE FROM notifications WHERE ts < ?', [cutoff]);
     this.db.run('DELETE FROM agents WHERE last_event_at < ?', [cutoff]);
     const ag = this.db.getRowsModified();
+    if (opts.remember) this.rememberCutoff(cutoff);
     this.markDirty();
     return { events: ev, agents: ag };
   }
 
-  purgeAll(): void {
-    this.db.exec('DELETE FROM events; DELETE FROM notifications; DELETE FROM agents; DELETE FROM offsets;');
-    this.offsets.clear();
+  /**
+   * Deletes all history. Read offsets are kept and a cutoff date is stored, so transcripts
+   * already read are not imported again at the next start (R-01).
+   */
+  purgeAll(now = Date.now()): void {
+    this.db.exec('DELETE FROM events; DELETE FROM notifications; DELETE FROM agents;');
+    this.rememberCutoff(now);
     this.markDirty();
   }
 

@@ -448,7 +448,11 @@ function registerIpc() {
     await fsp.writeFile(r.filePath, JSON.stringify(data, null, 2));
     return { ok: true, message: `Exporté vers ${r.filePath}` };
   });
-  ipcMain.handle(IPC.purge, (_e, days: number | 'all') => purgeHistory(db, manager, days));
+  ipcMain.handle(IPC.purge, (_e, days: number | 'all') => {
+    const r = purgeHistory(db, manager, days);
+    if (r.ok) send(IPC.historyPurged, { before: r.before });
+    return { ok: r.ok, message: r.message };
+  });
   ipcMain.handle(IPC.markRead, () => db.markAllRead());
   ipcMain.handle(IPC.pickFolder, async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] });

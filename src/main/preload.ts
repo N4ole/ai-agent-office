@@ -38,6 +38,7 @@ const api = {
   onConsole: on(IPC.console),
   onLog: on(IPC.log),
   onSelectAgent: on('office:select-agent'),
+  onHistoryPurged: on(IPC.historyPurged),
 };
 
 contextBridge.exposeInMainWorld('office', api);

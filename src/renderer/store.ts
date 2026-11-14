@@ -118,4 +118,17 @@ export async function initStore() {
     emit();
   });
   api.onSelectAgent((id) => store.set({ selected: id, view: 'office' }));
+  api.onHistoryPurged(({ before }) => {
+    state.live = state.live.filter((e) => e.ts >= before);
+    state.notifications = state.notifications.filter((n) => n.ts >= before);
+    emit();
+  });
+  api.onAgents(({ removed }) => {
+    // Agents that left the office (purge, demo off): free their console buffers too (R-16).
+    if (!removed.length || !removed.some((id) => state.consoles.has(id))) return;
+    const consoles = new Map(state.consoles);
+    for (const id of removed) consoles.delete(id);
+    state.consoles = consoles;
+    emit();
+  });
 }

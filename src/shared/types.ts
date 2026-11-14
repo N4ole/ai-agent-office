@@ -272,6 +272,7 @@ export const IPC = {
   quota: 'office:quota',
   getQuota: 'office:get-quota',
   refreshQuota: 'office:refresh-quota',
+  historyPurged: 'office:history-purged',
 } as const;
 
 export interface Health {
